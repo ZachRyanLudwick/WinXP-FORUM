@@ -19,9 +19,22 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: 'default-avatar.png',
     },
+    notificationSettings: {
+        likes: { type: Boolean, default: true },
+        comments: { type: Boolean, default: true },
+        replies: { type: Boolean, default: true }
+    },
     isAdmin: {
         type: Boolean,
         default: false,
+    },
+    bookmarks: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post',
+    }],
+    iconPositions: {
+        type: Object,
+        default: {}
     },
 }, {
     timestamps: true,

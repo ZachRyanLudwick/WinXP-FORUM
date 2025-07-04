@@ -5,12 +5,27 @@ const adminAuth = require('../middleware/adminAuth');
 
 const router = express.Router();
 
+// Get bookmarked posts (must be before /:id route)
+router.get('/bookmarks', auth, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const user = await User.findById(req.userId).populate({
+            path: 'bookmarks',
+            populate: { path: 'author', select: 'username avatar' }
+        });
+        res.json(user.bookmarks || []);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // get posts
 router.get('/', async (req, res) => {
     try {
         const posts = await Post.find()
             .populate('author', 'username avatar')
             .populate('comments.author', 'username avatar')
+            .populate('comments.replies.author', 'username avatar')
             .sort({ createdAt: -1 });
         res.json(posts);
     } catch (error) {
@@ -47,7 +62,8 @@ router.get('/:id', async (req,res) => {
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username avatar')
-            .populate('comments.author', 'username avatar');
+            .populate('comments.author', 'username avatar')
+            .populate('comments.replies.author', 'username avatar');
 
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
@@ -77,6 +93,16 @@ router.post('/:id/comments', auth, async (req, res) => {
 
         await post.save();
         await post.populate('comments.author', 'username avatar');
+        await post.populate('comments.replies.author', 'username avatar');
+        
+        // Create notification for post author
+        await global.createNotification(
+            post.author,
+            req.userId,
+            'comment',
+            `commented on your post "${post.title}"`,
+            post._id
+        );
 
         res.json(post);
     } catch (error) {
@@ -98,14 +124,152 @@ router.post('/:id/like', auth, async (req, res) => {
 
         if (likeIndex > -1) {
             post.likes.splice(likeIndex, 1);
+            // Remove notification when unliking
+            await global.removeNotification(post.author, req.userId, 'like', post._id);
         } else {
             post.likes.push(req.userId);
+            // Create notification for post author
+            await global.createNotification(
+                post.author,
+                req.userId,
+                'like',
+                `liked your post "${post.title}"`,
+                post._id
+            );
         }
 
         await post.save();
         res.json(post);
     } catch (error) {
         return res.status(400).json({ message: 'Server Error' });
+    }
+});
+
+// Bookmark/Unbookmark post
+router.post('/:id/bookmark', auth, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const user = await User.findById(req.userId);
+        if (!user.bookmarks) user.bookmarks = [];
+
+        const bookmarkIndex = user.bookmarks.indexOf(req.params.id);
+        if (bookmarkIndex > -1) {
+            user.bookmarks.splice(bookmarkIndex, 1);
+        } else {
+            user.bookmarks.push(req.params.id);
+        }
+
+        await user.save();
+        res.json({ bookmarked: bookmarkIndex === -1 });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+
+
+// Like/Unlike comment
+router.post('/:id/comments/:commentId/like', auth, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+        
+        const comment = post.comments.id(req.params.commentId);
+        if (!comment) return res.status(404).json({ message: 'Comment not found' });
+        
+        const likeIndex = comment.likes.indexOf(req.userId);
+        if (likeIndex > -1) {
+            comment.likes.splice(likeIndex, 1);
+            // Remove notification when unliking comment
+            await global.removeNotification(comment.author, req.userId, 'like', post._id);
+        } else {
+            comment.likes.push(req.userId);
+            // Create notification for comment author
+            await global.createNotification(
+                comment.author,
+                req.userId,
+                'like',
+                `liked your comment on "${post.title}"`,
+                post._id
+            );
+        }
+        
+        await post.save();
+        await post.populate('comments.author', 'username avatar');
+        await post.populate('comments.replies.author', 'username avatar');
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Reply to comment
+router.post('/:id/comments/:commentId/reply', auth, async (req, res) => {
+    try {
+        const { content } = req.body;
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+        
+        const comment = post.comments.id(req.params.commentId);
+        if (!comment) return res.status(404).json({ message: 'Comment not found' });
+        
+        comment.replies.push({
+            author: req.userId,
+            content
+        });
+        
+        await post.save();
+        await post.populate('comments.author', 'username avatar');
+        await post.populate('comments.replies.author', 'username avatar');
+        
+        // Create notification for comment author
+        await global.createNotification(
+            comment.author,
+            req.userId,
+            'reply',
+            `replied to your comment on "${post.title}"`,
+            post._id
+        );
+        
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Like/Unlike reply
+router.post('/:id/comments/:commentId/replies/:replyId/like', auth, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ message: 'Post not found' });
+        
+        const comment = post.comments.id(req.params.commentId);
+        if (!comment) return res.status(404).json({ message: 'Comment not found' });
+        
+        const reply = comment.replies.id(req.params.replyId);
+        if (!reply) return res.status(404).json({ message: 'Reply not found' });
+        
+        const likeIndex = reply.likes.indexOf(req.userId);
+        if (likeIndex > -1) {
+            reply.likes.splice(likeIndex, 1);
+            await global.removeNotification(reply.author, req.userId, 'like', post._id);
+        } else {
+            reply.likes.push(req.userId);
+            await global.createNotification(
+                reply.author,
+                req.userId,
+                'like',
+                `liked your reply on "${post.title}"`,
+                post._id
+            );
+        }
+        
+        await post.save();
+        await post.populate('comments.author', 'username avatar');
+        await post.populate('comments.replies.author', 'username avatar');
+        res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

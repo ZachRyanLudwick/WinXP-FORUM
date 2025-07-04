@@ -1,6 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Settings = ({ user, onLogout, onClose }) => {
+  const [notificationSettings, setNotificationSettings] = useState({
+    likes: true,
+    comments: true,
+    replies: true
+  });
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotificationSettings();
+    }
+  }, [user]);
+
+  const fetchNotificationSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5001/api/notifications/settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const settings = await response.json();
+        setNotificationSettings(settings);
+      }
+    } catch (error) {
+      console.error('Error fetching notification settings:', error);
+    }
+  };
+
+  const updateNotificationSetting = async (type, enabled) => {
+    const newSettings = { ...notificationSettings, [type]: enabled };
+    setNotificationSettings(newSettings);
+    
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:5001/api/notifications/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(newSettings)
+      });
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+    }
+  };
   const handleLogout = () => {
     localStorage.removeItem('token');
     onLogout();
@@ -59,16 +105,61 @@ const Settings = ({ user, onLogout, onClose }) => {
         }}>
           <button 
             className="button"
+            onClick={() => setShowNotifications(!showNotifications)}
             style={{ 
               textAlign: 'left', 
               padding: '8px 12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              background: showNotifications ? '#e6f3ff' : 'transparent'
             }}
           >
-            🔔 Notifications (Coming Soon)
+            🔔 Notifications {showNotifications ? '▼' : '▶'}
           </button>
+          
+          {showNotifications && (
+            <div style={{ 
+              marginLeft: '16px', 
+              padding: '8px', 
+              background: '#f8f9fa', 
+              border: '1px solid #dee2e6',
+              borderRadius: '4px'
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Choose which notifications to receive:
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={notificationSettings.likes}
+                    onChange={(e) => updateNotificationSetting('likes', e.target.checked)}
+                  />
+                  ❤️ Likes on my posts and comments
+                </label>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={notificationSettings.comments}
+                    onChange={(e) => updateNotificationSetting('comments', e.target.checked)}
+                  />
+                  💬 Comments on my posts
+                </label>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={notificationSettings.replies}
+                    onChange={(e) => updateNotificationSetting('replies', e.target.checked)}
+                  />
+                  ↩️ Replies to my comments
+                </label>
+              </div>
+            </div>
+          )}
           
           <button 
             className="button"

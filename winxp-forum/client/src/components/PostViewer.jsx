@@ -1,5 +1,169 @@
 import React, { useState } from 'react';
 
+const CommentItem = ({ comment, postId, onUpdate }) => {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [liked, setLiked] = useState(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return comment.likes?.includes(payload.userId) || false;
+    } catch { return false; }
+  });
+
+  const handleLike = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return alert('Please login to like comments');
+      
+      await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setLiked(!liked);
+      onUpdate();
+    } catch (error) {
+      console.error('Error liking comment:', error);
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim()) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return alert('Please login to reply');
+      
+      await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/reply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: replyText })
+      });
+      
+      setReplyText('');
+      setShowReplyForm(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Error replying:', error);
+    }
+  };
+
+  return (
+    <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', background: 'white' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ 
+          width: '24px', height: '24px', borderRadius: '50%', background: '#007bff', 
+          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+          fontSize: '10px', fontWeight: 'bold' 
+        }}>
+          {comment.author?.username?.charAt(0).toUpperCase()}
+        </div>
+        <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{comment.author?.username}</div>
+        <div style={{ fontSize: '9px', color: '#666' }}>
+          {new Date(comment.createdAt).toLocaleDateString()}
+        </div>
+      </div>
+      <div style={{ fontSize: '11px', lineHeight: '1.4', marginLeft: '32px' }}>
+        {comment.content}
+      </div>
+      <div style={{ marginTop: '6px', marginLeft: '32px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <button 
+          onClick={handleLike}
+          style={{ 
+            background: 'none', border: 'none', fontSize: '9px', 
+            color: liked ? '#ff4757' : '#666', cursor: 'pointer' 
+          }}
+        >
+          👍 {comment.likes?.length || 0}
+        </button>
+        <button 
+          onClick={() => setShowReplyForm(!showReplyForm)}
+          style={{ background: 'none', border: 'none', fontSize: '9px', color: '#666', cursor: 'pointer' }}
+        >
+          💬 Reply
+        </button>
+      </div>
+      
+      {showReplyForm && (
+        <div style={{ marginLeft: '32px', marginTop: '8px' }}>
+          <input
+            type="text"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write a reply..."
+            style={{ width: '100%', padding: '4px', fontSize: '10px', border: '1px solid #ddd' }}
+          />
+          <div style={{ marginTop: '4px', display: 'flex', gap: '4px' }}>
+            <button className="button primary" onClick={handleReply} style={{ fontSize: '9px' }}>Reply</button>
+            <button className="button" onClick={() => setShowReplyForm(false)} style={{ fontSize: '9px' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      
+      {comment.replies?.map((reply, idx) => {
+        const handleReplyLike = async () => {
+          try {
+            const token = localStorage.getItem('token');
+            if (!token) return alert('Please login to like replies');
+            
+            await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/replies/${reply._id}/like`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            onUpdate();
+          } catch (error) {
+            console.error('Error liking reply:', error);
+          }
+        };
+        
+        const isLiked = (() => {
+          const token = localStorage.getItem('token');
+          if (!token) return false;
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return reply.likes?.includes(payload.userId) || false;
+          } catch { return false; }
+        })();
+        
+        return (
+          <div key={idx} style={{ marginLeft: '32px', marginTop: '8px', padding: '8px', background: '#f8f9fa', borderRadius: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <div style={{ 
+                width: '20px', height: '20px', borderRadius: '50%', background: '#28a745', 
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                fontSize: '8px', fontWeight: 'bold' 
+              }}>
+                {reply.author?.username?.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ fontSize: '10px', fontWeight: 'bold' }}>{reply.author?.username}</div>
+              <div style={{ fontSize: '8px', color: '#666' }}>
+                {new Date(reply.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+            <div style={{ fontSize: '10px', marginLeft: '26px', marginBottom: '4px' }}>{reply.content}</div>
+            <div style={{ marginLeft: '26px' }}>
+              <button 
+                onClick={handleReplyLike}
+                style={{ 
+                  background: 'none', border: 'none', fontSize: '8px', 
+                  color: isLiked ? '#ff4757' : '#666', cursor: 'pointer' 
+                }}
+              >
+                👍 {reply.likes?.length || 0}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // Simple markdown-style renderer
 const renderContent = (content, onFileClick) => {
   if (!content) return '';
@@ -30,7 +194,7 @@ const renderContent = (content, onFileClick) => {
 const FileViewer = ({ filename, originalName, onClose }) => {
   const downloadFile = () => {
     const link = document.createElement('a');
-    link.href = `http://localhost:5001/uploads/${filename}`;
+    link.href = `http://localhost:5001/uploads/${filensame}`;
     link.download = originalName;
     link.click();
   };
@@ -52,7 +216,7 @@ const FileViewer = ({ filename, originalName, onClose }) => {
   );
 };
 
-const PostViewer = ({ post, onOpenFile }) => {
+const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => {
   const [liked, setLiked] = useState(() => {
     const token = localStorage.getItem('token');
     if (!token) return false;
@@ -68,10 +232,45 @@ const PostViewer = ({ post, onOpenFile }) => {
   const [likeCount, setLikeCount] = useState(post?.likes?.length || 0);
   const [comments, setComments] = useState(post?.comments || []);
   const [newComment, setNewComment] = useState('');
-  const [bookmarked, setBookmarked] = useState(() => {
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    return bookmarks.includes(post?._id) || false;
-  });
+  const [bookmarked, setBookmarked] = useState(false);
+
+  const checkBookmarkStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch('http://localhost:5001/api/posts/bookmarks', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const bookmarks = await response.json();
+        setBookmarked(bookmarks.some(b => b._id === post._id));
+      }
+    } catch (error) {
+      console.error('Error checking bookmark status:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    checkBookmarkStatus();
+  }, [post._id, bookmarkRefresh]);
+
+  const fetchPostData = async () => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/posts/${post._id}`);
+      if (response.ok) {
+        const updatedPost = await response.json();
+        setComments(updatedPost.comments);
+        setLikeCount(updatedPost.likes.length);
+      }
+    } catch (error) {
+      console.error('Error fetching post data:', error);
+    }
+  };
+
+  React.useEffect(() => {
+    const interval = setInterval(fetchPostData, 3000);
+    return () => clearInterval(interval);
+  }, [post._id]);
 
   if (!post) {
     return <div className="error">Post not found</div>;
@@ -271,19 +470,25 @@ const PostViewer = ({ post, onOpenFile }) => {
         </button>
         <button 
           className="button"
-          onClick={() => {
-            const newBookmarked = !bookmarked;
-            setBookmarked(newBookmarked);
-            
-            // Save to localStorage
-            const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-            if (newBookmarked) {
-              bookmarks.push(post._id);
-            } else {
-              const index = bookmarks.indexOf(post._id);
-              if (index > -1) bookmarks.splice(index, 1);
+          onClick={async () => {
+            try {
+              const token = localStorage.getItem('token');
+              if (!token) {
+                alert('Please login to bookmark posts');
+                return;
+              }
+              const response = await fetch(`http://localhost:5001/api/posts/${post._id}/bookmark`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (response.ok) {
+                const data = await response.json();
+                setBookmarked(data.bookmarked);
+                onBookmarkChange && onBookmarkChange();
+              }
+            } catch (error) {
+              console.error('Error bookmarking post:', error);
             }
-            localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
           }}
           style={{ 
             display: 'flex', 
@@ -344,71 +549,12 @@ const PostViewer = ({ post, onOpenFile }) => {
 
         {/* Comments List */}
         {comments && comments.map((comment, index) => (
-          <div key={index} style={{ 
-            padding: '12px 16px', 
-            borderBottom: '1px solid #eee',
-            background: 'white'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              marginBottom: '6px' 
-            }}>
-              <div style={{ 
-                width: '24px', 
-                height: '24px', 
-                borderRadius: '50%', 
-                background: '#007bff', 
-                color: 'white', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '10px', 
-                fontWeight: 'bold' 
-              }}>
-                {comment.author?.username?.charAt(0).toUpperCase()}
-              </div>
-              <div style={{ fontSize: '11px', fontWeight: 'bold' }}>
-                {comment.author?.username}
-              </div>
-              <div style={{ fontSize: '9px', color: '#666' }}>
-                {new Date(comment.createdAt).toLocaleDateString()}
-              </div>
-            </div>
-            <div style={{ 
-              fontSize: '11px', 
-              lineHeight: '1.4', 
-              marginLeft: '32px' 
-            }}>
-              {comment.content}
-            </div>
-            <div style={{ 
-              marginTop: '6px', 
-              marginLeft: '32px', 
-              display: 'flex', 
-              gap: '12px' 
-            }}>
-              <button style={{ 
-                background: 'none', 
-                border: 'none', 
-                fontSize: '9px', 
-                color: '#666', 
-                cursor: 'pointer' 
-              }}>
-                👍 Like
-              </button>
-              <button style={{ 
-                background: 'none', 
-                border: 'none', 
-                fontSize: '9px', 
-                color: '#666', 
-                cursor: 'pointer' 
-              }}>
-                💬 Reply
-              </button>
-            </div>
-          </div>
+          <CommentItem 
+            key={comment._id || index}
+            comment={comment}
+            postId={post._id}
+            onUpdate={fetchPostData}
+          />
         ))}
         
         {(!comments || comments.length === 0) && (

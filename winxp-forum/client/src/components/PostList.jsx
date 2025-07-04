@@ -1,13 +1,37 @@
 import React, { useState, useEffect } from 'react';
 
-const PostList = ({ onOpenPost }) => {
+const PostList = ({ onOpenPost, refreshTrigger }) => {
   const [posts, setPosts] = useState([]);
+  const [bookmarks, setBookmarks] = useState([]);
+  const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+    fetchBookmarks();
+    const interval = setInterval(() => {
+      fetchPosts();
+      if (activeTab === 'bookmarks') fetchBookmarks();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activeTab, refreshTrigger]);
+
+  const fetchBookmarks = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const response = await fetch('http://localhost:5001/api/posts/bookmarks', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBookmarks(data);
+      }
+    } catch (error) {
+      console.error('Error fetching bookmarks:', error);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -36,9 +60,37 @@ const PostList = ({ onOpenPost }) => {
     return <div>No posts yet. Be the first to create one!</div>;
   }
 
+  const currentPosts = activeTab === 'bookmarks' ? bookmarks : posts;
+
   return (
-    <div className="post-list">
-      {posts.map(post => (
+    <div>
+      <div style={{ 
+        display: 'flex', 
+        borderBottom: '1px solid #ccc', 
+        marginBottom: '8px' 
+      }}>
+        <button 
+          className={`button ${activeTab === 'all' ? 'primary' : ''}`}
+          onClick={() => setActiveTab('all')}
+          style={{ borderRadius: 0, marginRight: '2px' }}
+        >
+          📝 All Posts ({posts.length})
+        </button>
+        <button 
+          className={`button ${activeTab === 'bookmarks' ? 'primary' : ''}`}
+          onClick={() => setActiveTab('bookmarks')}
+          style={{ borderRadius: 0 }}
+        >
+          🔖 Bookmarks ({bookmarks.length})
+        </button>
+      </div>
+      <div className="post-list">
+        {currentPosts.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
+            {activeTab === 'bookmarks' ? 'No bookmarked posts yet.' : 'No posts yet. Be the first to create one!'}
+          </div>
+        ) : (
+          currentPosts.map(post => (
         <div 
           key={post._id} 
           className="post-item"
@@ -77,8 +129,10 @@ const PostList = ({ onOpenPost }) => {
               </div>
             )}
           </div>
-        </div>
-      ))}
+          </div>
+        ))
+        )}
+      </div>
     </div>
   );
 };

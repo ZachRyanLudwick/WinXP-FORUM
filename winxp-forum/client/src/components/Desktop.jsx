@@ -7,6 +7,81 @@ import Login from './Login';
 import AdminPanel from './AdminPanel';
 import XPPopup from './XPPopup';
 import Settings from './Settings';
+import { saveIconPositions, loadIconPositions } from '../iconPositions';
+
+const DesktopIcon = ({ id, icon, label, position, onDoubleClick, onPositionChange, gridToPixels, snapToGrid, draggedIcon, setDraggedIcon }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  const pixelPos = gridToPixels(position.x, position.y);
+  
+  const handleMouseDown = (e) => {
+    if (e.detail === 2) return; // Ignore on double click
+    setIsDragging(true);
+    setDraggedIcon(id);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    e.preventDefault();
+  };
+  
+  const handleMouseMove = (e) => {
+    if (isDragging && draggedIcon === id) {
+      const newGridPos = snapToGrid(
+        e.clientX - dragOffset.x - 20,
+        e.clientY - dragOffset.y - 20
+      );
+      if (newGridPos.x >= 0 && newGridPos.y >= 0 && newGridPos.x < 15 && newGridPos.y < 10) {
+        onPositionChange(newGridPos);
+      }
+    }
+  };
+  
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDraggedIcon(null);
+  };
+  
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset, draggedIcon]);
+  
+  return (
+    <div 
+      className={`desktop-icon ${isDragging ? 'selected' : ''}`}
+      style={{ 
+        position: 'absolute',
+        left: pixelPos.x, 
+        top: pixelPos.y,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        zIndex: isDragging ? 1000 : 1,
+        transform: isDragging ? 'scale(1.1)' : 'scale(1)',
+        transition: isDragging ? 'none' : 'transform 0.2s ease, box-shadow 0.2s ease',
+        boxShadow: isDragging ? '0 8px 16px rgba(0,0,0,0.3)' : 'none',
+        opacity: isDragging ? 0.9 : 1
+      }}
+      onMouseDown={handleMouseDown}
+      onDoubleClick={onDoubleClick}
+    >
+      <div className="icon-image" style={{
+        transform: isDragging ? 'rotate(5deg)' : 'rotate(0deg)',
+        transition: isDragging ? 'none' : 'transform 0.2s ease'
+      }}>{icon}</div>
+      <span style={{
+        textShadow: isDragging ? '1px 1px 2px rgba(0,0,0,0.5)' : 'none'
+      }}>{label}</span>
+    </div>
+  );
+};
 
 const FileViewer = ({ filename, originalName, onClose }) => {
   const downloadFile = async () => {
@@ -46,14 +121,81 @@ const Desktop = () => {
   const [windows, setWindows] = useState([]);
   const [nextId, setNextId] = useState(1);
   const [user, setUser] = useState(null);
+  const [bookmarkRefresh, setBookmarkRefresh] = useState(0);
   const [minimizedWindows, setMinimizedWindows] = useState(new Set());
   const [windowStates, setWindowStates] = useState({});
   const [activeWindow, setActiveWindow] = useState(null);
   const [popup, setPopup] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionBox, setSelectionBox] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
+  const [iconPositions, setIconPositions] = useState({
+    posts: { x: 0, y: 0 },
+    create: { x: 0, y: 1 },
+    admin: { x: 0, y: 2 },
+    login: { x: 1, y: 0 },
+    settings: { x: 1, y: 0 }
+  });
+  const [draggedIcon, setDraggedIcon] = useState(null);
+  
+  const GRID_SIZE = 80;
+  const ICON_SIZE = 64;
+  
+  const snapToGrid = (x, y) => ({
+    x: Math.round(x / GRID_SIZE),
+    y: Math.round(y / GRID_SIZE)
+  });
+  
+  const gridToPixels = (gridX, gridY) => ({
+    x: gridX * GRID_SIZE + 20,
+    y: gridY * GRID_SIZE + 20
+  });
 
   const showPopup = (message, type = 'info', title = 'Notification') => {
     setPopup({ message, type, title });
   };
+
+  const addNotification = (type, message) => {
+    const newNotif = { type, message, timestamp: new Date(), read: false };
+    setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
+    setUnreadCount(prev => prev + 1);
+  };
+
+  React.useEffect(() => {
+    if (!user) return;
+    
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5001/api/notifications', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data);
+          setUnreadCount(data.filter(n => !n.read).length);
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
+    };
+    
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000); // Check every 5 seconds
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Update clock every second
+  React.useEffect(() => {
+    const clockInterval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(clockInterval);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -66,6 +208,10 @@ const Desktop = () => {
       .then(data => {
         if (data.user) {
           setUser(data.user);
+          // Load saved icon positions
+          loadIconPositions(data.user.id).then(positions => {
+            setIconPositions(positions);
+          });
         }
       })
       .catch(() => {
@@ -74,16 +220,34 @@ const Desktop = () => {
     }
   }, []);
 
+  // Save icon positions when they change
+  useEffect(() => {
+    if (user) {
+      saveIconPositions(iconPositions, user.id);
+    }
+  }, [iconPositions, user]);
+
   const openWindow = (type, props = {}) => {
+    const maxZ = windows.length > 0 ? Math.max(...windows.map(w => w.zIndex)) : 0;
+    const newZIndex = maxZ + 1;
+    
+    // Better positioning logic to avoid overlap
+    const baseX = 100;
+    const baseY = 80;
+    const offsetX = 200; // Larger horizontal offset
+    const offsetY = 50;
+    
+    const position = {
+      x: baseX + ((nextId - 1) % 4) * offsetX, // Cycle through 4 horizontal positions
+      y: baseY + Math.floor((nextId - 1) / 4) * offsetY // Stack vertically after 4 windows
+    };
+    
     const newWindow = {
       id: nextId,
       type,
       props,
-      zIndex: nextId,
-      position: { 
-        x: 50 + (nextId * 20), 
-        y: 50 + (nextId * 20) 
-      }
+      zIndex: newZIndex,
+      position
     };
     
     setWindows(prev => [...prev, newWindow]);
@@ -93,8 +257,9 @@ const Desktop = () => {
 
   const focusWindow = (id) => {
     setActiveWindow(id);
+    const maxZ = Math.max(...windows.map(w => w.zIndex));
     setWindows(prev => prev.map(w => 
-      w.id === id ? { ...w, zIndex: Math.max(...prev.map(win => win.zIndex)) + 1 } : w
+      w.id === id ? { ...w, zIndex: maxZ + 1 } : w
     ));
   };
 
@@ -156,7 +321,10 @@ const Desktop = () => {
             title="Posts"
             icon="📝"
           >
-            <PostList onOpenPost={(post) => openWindow('post', { post })} />
+            <PostList 
+              onOpenPost={(post) => openWindow('post', { post })} 
+              refreshTrigger={bookmarkRefresh}
+            />
           </Window>
         );
       
@@ -171,6 +339,8 @@ const Desktop = () => {
             <PostViewer 
               post={props.post} 
               onOpenFile={(file) => openWindow('file', { file })}
+              onBookmarkChange={() => setBookmarkRefresh(prev => prev + 1)}
+              bookmarkRefresh={bookmarkRefresh}
             />
           </Window>
         );
@@ -265,58 +435,131 @@ const Desktop = () => {
       className="desktop"
       onContextMenu={(e) => e.preventDefault()}
       onSelectStart={(e) => e.preventDefault()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          setShowNotifications(false);
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget && e.button === 0) {
+          setIsSelecting(true);
+          setSelectionStart({ x: e.clientX, y: e.clientY });
+          setSelectionBox({ x: e.clientX, y: e.clientY, width: 0, height: 0 });
+        }
+      }}
+      onMouseMove={(e) => {
+        if (isSelecting) {
+          const width = e.clientX - selectionStart.x;
+          const height = e.clientY - selectionStart.y;
+          setSelectionBox({
+            x: width < 0 ? e.clientX : selectionStart.x,
+            y: height < 0 ? e.clientY : selectionStart.y,
+            width: Math.abs(width),
+            height: Math.abs(height)
+          });
+        }
+      }}
+      onMouseUp={() => {
+        setIsSelecting(false);
+        setSelectionBox({ x: 0, y: 0, width: 0, height: 0 });
+      }}
+      style={{
+        backgroundImage: draggedIcon ? 
+          'url("https://i.imgur.com/Zk6TR5k.jpeg"), repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, transparent 1px, transparent 79px, rgba(255,255,255,0.03) 80px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, transparent 1px, transparent 79px, rgba(255,255,255,0.03) 80px)' : 
+          'url("https://i.imgur.com/Zk6TR5k.jpeg")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        transition: 'background-image 0.3s ease',
+        position: 'relative'
+      }}
     >
       {/* Desktop Icons */}
-      <div 
-        className="desktop-icon"
-        style={{ top: 20, left: 20 }}
+      <DesktopIcon 
+        id="posts"
+        icon="📝"
+        label="Posts"
+        position={iconPositions.posts}
         onDoubleClick={() => openWindow('posts')}
-      >
-        <div className="icon-image">📝</div>
-        <span>Posts</span>
-      </div>
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, posts: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+      />
 
       {user?.isAdmin && (
-        <div 
-          className="desktop-icon"
-          style={{ top: 100, left: 20 }}
+        <DesktopIcon 
+          id="create"
+          icon="✏️"
+          label="New Post"
+          position={iconPositions.create}
           onDoubleClick={() => openWindow('create')}
-        >
-          <div className="icon-image">✏️</div>
-          <span>New Post</span>
-        </div>
+          onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, create: pos }))}
+          gridToPixels={gridToPixels}
+          snapToGrid={snapToGrid}
+          draggedIcon={draggedIcon}
+          setDraggedIcon={setDraggedIcon}
+        />
       )}
 
       {user?.isAdmin && (
-        <div 
-          className="desktop-icon"
-          style={{ top: 180, left: 20 }}
+        <DesktopIcon 
+          id="admin"
+          icon="🛠️"
+          label="Admin Panel"
+          position={iconPositions.admin}
           onDoubleClick={() => openWindow('admin')}
-        >
-          <div className="icon-image">🛠️</div>
-          <span>Admin Panel</span>
-        </div>
+          onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, admin: pos }))}
+          gridToPixels={gridToPixels}
+          snapToGrid={snapToGrid}
+          draggedIcon={draggedIcon}
+          setDraggedIcon={setDraggedIcon}
+        />
       )}
 
       {!user && (
-        <div 
-          className="desktop-icon"
-          style={{ top: 20, left: 100 }}
+        <DesktopIcon 
+          id="login"
+          icon="🔐"
+          label="Login"
+          position={iconPositions.login}
           onDoubleClick={() => openWindow('login')}
-        >
-          <div className="icon-image">🔐</div>
-          <span>Login</span>
-        </div>
+          onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, login: pos }))}
+          gridToPixels={gridToPixels}
+          snapToGrid={snapToGrid}
+          draggedIcon={draggedIcon}
+          setDraggedIcon={setDraggedIcon}
+        />
       )}
 
-      <div 
-        className="desktop-icon"
-        style={{ top: 20, left: user ? 100 : 180 }}
+      <DesktopIcon 
+        id="settings"
+        icon="⚙️"
+        label="Settings"
+        position={user ? iconPositions.settings : { x: 2, y: 0 }}
         onDoubleClick={() => openWindow('settings')}
-      >
-        <div className="icon-image">⚙️</div>
-        <span>Settings</span>
-      </div>
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, settings: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+      />
+
+      {/* Selection Box */}
+      {isSelecting && (
+        <div style={{
+          position: 'absolute',
+          left: selectionBox.x,
+          top: selectionBox.y,
+          width: selectionBox.width,
+          height: selectionBox.height,
+          border: '1px solid #316AC5',
+          background: 'rgba(54, 97, 165, 0.49)',
+          pointerEvents: 'none',
+          zIndex: 999
+        }} />
+      )}
 
       {/* Windows */}
       {windows.filter(w => !minimizedWindows.has(w.id)).map(renderWindow)}
@@ -343,9 +586,120 @@ const Desktop = () => {
           </div>
         ))}
 
-        <div style={{ marginLeft: 'auto', color: 'white', fontSize: '11px' }}>
-          {new Date().toLocaleTimeString()}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div 
+            className="taskbar-item"
+            onClick={(e) => { e.stopPropagation(); setShowNotifications(!showNotifications); }}
+            style={{ 
+              position: 'relative',
+              background: showNotifications ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)',
+              cursor: 'pointer'
+            }}
+          >
+            🔔 {unreadCount > 0 && <span style={{ 
+              position: 'absolute', top: '-2px', right: '-2px', background: '#ff4757', 
+              color: 'white', borderRadius: '50%', width: '16px', height: '16px', 
+              fontSize: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' 
+            }}>{unreadCount}</span>}
+          </div>
+          <div style={{ color: 'white', fontSize: '11px' }}>
+            {currentTime.toLocaleTimeString()}
+          </div>
         </div>
+        
+        {showNotifications && (
+          <div style={{
+            position: 'absolute', bottom: '42px', right: '8px', width: '300px', maxHeight: '400px',
+            background: 'var(--xp-gray)', border: '2px solid',
+            borderColor: 'var(--xp-white) var(--xp-shadow) var(--xp-shadow) var(--xp-white)',
+            boxShadow: '2px 2px 4px rgba(0,0,0,0.3)', zIndex: 2000
+          }}>
+            <div style={{
+              background: 'linear-gradient(to bottom, var(--xp-blue), var(--xp-light-blue))',
+              color: 'white', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <span>🔔 Notifications</span>
+              <button onClick={() => setShowNotifications(false)} style={{
+                background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '12px'
+              }}>✕</button>
+            </div>
+            <div style={{ maxHeight: '350px', overflow: 'auto' }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', color: '#666' }}>
+                  No notifications yet
+                </div>
+              ) : (
+                notifications.map((notif, index) => (
+                  <div key={index} style={{
+                    padding: '8px', borderBottom: '1px solid #ccc',
+                    background: notif.read ? 'white' : '#e6f3ff', cursor: 'pointer'
+                  }} onClick={async () => {
+                    if (!notif.read) {
+                      try {
+                        const token = localStorage.getItem('token');
+                        await fetch(`http://localhost:5001/api/notifications/${notif._id}/read`, {
+                          method: 'POST',
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        setNotifications(prev => prev.map((n, i) => i === index ? { ...n, read: true } : n));
+                        setUnreadCount(prev => Math.max(0, prev - 1));
+                      } catch (error) {
+                        console.error('Error marking notification as read:', error);
+                      }
+                    }
+                    
+                    // Open the related post
+                    if (notif.postId) {
+                      try {
+                        const response = await fetch(`http://localhost:5001/api/posts/${notif.postId}`);
+                        if (response.ok) {
+                          const post = await response.json();
+                          openWindow('post', { post });
+                        }
+                      } catch (error) {
+                        console.error('Error fetching post:', error);
+                      }
+                    }
+                    
+                    setShowNotifications(false);
+                  }}>
+                    <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>
+                      {notif.type === 'like' && '❤️ New Like'}
+                      {notif.type === 'comment' && '💬 New Comment'}
+                      {notif.type === 'reply' && '↩️ New Reply'}
+                    </div>
+                    <div style={{ fontSize: '9px', color: '#666' }}>{notif.message}</div>
+                    <div style={{ fontSize: '8px', color: '#999', marginTop: '2px' }}>
+                      {new Date(notif.timestamp).toLocaleString()}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            {notifications.length > 0 && (
+              <div style={{ padding: '4px 8px', borderTop: '1px solid #ccc', background: '#f0f0f0', display: 'flex', gap: '4px' }}>
+                <button className="button" onClick={() => {
+                  setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                  setUnreadCount(0);
+                }} style={{ fontSize: '9px', flex: 1 }}>Mark All Read</button>
+                <button className="button" onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('token');
+                    await fetch('http://localhost:5001/api/notifications/clear', {
+                      method: 'DELETE',
+                      headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setNotifications([]);
+                    setUnreadCount(0);
+                  } catch (error) {
+                    console.error('Error clearing notifications:', error);
+                  }
+                }} style={{ fontSize: '9px', flex: 1 }}>Clear All</button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Popup */}
