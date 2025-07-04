@@ -67,6 +67,10 @@ const postSchema = new mongoose.Schema({
         type: String,
         default: 'document.png'
     },
+    isCommunity: {
+        type: Boolean,
+        default: false
+    },
 }, {
     timestamps: true,
 });

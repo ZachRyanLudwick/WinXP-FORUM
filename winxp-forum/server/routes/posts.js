@@ -46,19 +46,19 @@ router.get('/community', async (req, res) => {
     }
 });
 
-// Create post (any user - auto-sorted by admin status)
+// Create community post (any user)
 router.post('/community', auth, async (req, res) => {
     try {
-        const { title, content } = req.body;
-        const User = require('../models/User');
-        const user = await User.findById(req.userId);
+        const { title, content, tags, category, icon } = req.body;
 
         const post = new Post({
             title,
             content,
             author: req.userId,
-            isCommunity: !user.isAdmin,
-            icon: user.isAdmin ? 'document.png' : 'community.png'
+            tags: tags || [],
+            category: category || 'general',
+            icon: icon || 'community.png',
+            isCommunity: true
         });
 
         await post.save();

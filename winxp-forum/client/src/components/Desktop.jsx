@@ -7,13 +7,21 @@ import Login from './Login';
 import AdminPanel from './AdminPanel';
 import XPPopup from './XPPopup';
 import Settings from './Settings';
+import Notepad from './Notepad';
+import FileExplorer from './FileExplorer';
+import Profile from './Profile';
+import UserSearch from './UserSearch';
+import Terminal from './Terminal';
+import CV from './CV';
 import { saveIconPositions, loadIconPositions } from '../iconPositions';
 
-const DesktopIcon = ({ id, icon, label, position, onDoubleClick, onPositionChange, gridToPixels, snapToGrid, draggedIcon, setDraggedIcon }) => {
+const DesktopIcon = ({ id, icon, label, position = { x: 0, y: 0 }, onDoubleClick, onPositionChange, gridToPixels, snapToGrid, draggedIcon, setDraggedIcon, gridCols, gridRows }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
-  const pixelPos = gridToPixels(position.x, position.y);
+  // Ensure position has valid values
+  const safePosition = position || { x: 0, y: 0 };
+  const pixelPos = gridToPixels(safePosition.x, safePosition.y);
   
   const handleMouseDown = (e) => {
     if (e.detail === 2) return; // Ignore on double click
@@ -25,6 +33,7 @@ const DesktopIcon = ({ id, icon, label, position, onDoubleClick, onPositionChang
       y: e.clientY - rect.top
     });
     e.preventDefault();
+    e.stopPropagation();
   };
   
   const handleMouseMove = (e) => {
@@ -33,8 +42,8 @@ const DesktopIcon = ({ id, icon, label, position, onDoubleClick, onPositionChang
         e.clientX - dragOffset.x - 20,
         e.clientY - dragOffset.y - 20
       );
-      if (newGridPos.x >= 0 && newGridPos.y >= 0 && newGridPos.x < 15 && newGridPos.y < 10) {
-        onPositionChange(newGridPos);
+      if (newGridPos.x >= 0 && newGridPos.y >= 0 && newGridPos.x < gridCols && newGridPos.y < gridRows) {
+        onPositionChange && onPositionChange(newGridPos);
       }
     }
   };
@@ -70,7 +79,12 @@ const DesktopIcon = ({ id, icon, label, position, onDoubleClick, onPositionChang
         opacity: isDragging ? 0.9 : 1
       }}
       onMouseDown={handleMouseDown}
-      onDoubleClick={onDoubleClick}
+      onDoubleClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onDoubleClick();
+      }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div className="icon-image" style={{
         transform: isDragging ? 'rotate(5deg)' : 'rotate(0deg)',
@@ -133,17 +147,17 @@ const Desktop = () => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [selectionStart, setSelectionStart] = useState({ x: 0, y: 0 });
-  const [iconPositions, setIconPositions] = useState({
-    posts: { x: 0, y: 0 },
-    create: { x: 0, y: 1 },
-    admin: { x: 0, y: 2 },
-    login: { x: 1, y: 0 },
-    settings: { x: 1, y: 0 }
-  });
+  const [iconPositions, setIconPositions] = useState({});
   const [draggedIcon, setDraggedIcon] = useState(null);
+  const [showStartMenu, setShowStartMenu] = useState(false);
+  const [screenSize, setScreenSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   
   const GRID_SIZE = 80;
   const ICON_SIZE = 64;
+  
+  // Calculate grid dimensions based on screen size
+  const gridCols = Math.floor((screenSize.width - 40) / GRID_SIZE);
+  const gridRows = Math.floor((screenSize.height - 100) / GRID_SIZE); // Account for taskbar
   
   const snapToGrid = (x, y) => ({
     x: Math.round(x / GRID_SIZE),
@@ -155,6 +169,31 @@ const Desktop = () => {
     y: gridY * GRID_SIZE + 20
   });
 
+  const getIconPosition = (iconId, defaultPos = { x: 0, y: 0 }) => {
+    if (iconPositions[iconId]) {
+      return iconPositions[iconId];
+    }
+    
+    // Calculate default positions based on visible icons
+    const visibleIcons = [];
+    visibleIcons.push('posts');
+    visibleIcons.push('create');
+    if (user?.isAdmin) visibleIcons.push('admin');
+    if (!user) visibleIcons.push('login');
+    visibleIcons.push('settings');
+    visibleIcons.push('notepad');
+    visibleIcons.push('explorer');
+    if (user) visibleIcons.push('profile');
+    
+    const iconIndex = visibleIcons.indexOf(iconId);
+    if (iconIndex === -1) return defaultPos;
+    
+    return {
+      x: Math.floor(iconIndex / Math.max(5, gridRows)), // Dynamic icons per column
+      y: iconIndex % Math.max(5, gridRows)
+    };
+  };
+
   const showPopup = (message, type = 'info', title = 'Notification') => {
     setPopup({ message, type, title });
   };
@@ -163,6 +202,26 @@ const Desktop = () => {
     const newNotif = { type, message, timestamp: new Date(), read: false };
     setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
     setUnreadCount(prev => prev + 1);
+  };
+
+  const searchUsers = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/profile/search/${query}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const users = await response.json();
+        setSearchResults(users);
+      }
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
   };
 
   React.useEffect(() => {
@@ -197,6 +256,16 @@ const Desktop = () => {
     return () => clearInterval(clockInterval);
   }, []);
 
+  // Update screen size on resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      setScreenSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -210,7 +279,11 @@ const Desktop = () => {
           setUser(data.user);
           // Load saved icon positions
           loadIconPositions(data.user.id).then(positions => {
-            setIconPositions(positions);
+            if (positions && typeof positions === 'object') {
+              setIconPositions(prev => ({ ...prev, ...positions }));
+            }
+          }).catch(error => {
+            console.error('Error loading icon positions:', error);
           });
         }
       })
@@ -425,6 +498,84 @@ const Desktop = () => {
           </Window>
         );
       
+      case 'notepad':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title={`${props.file?.name || 'Untitled'} - Notepad`}
+            icon="📝"
+            initialSize={{ width: 500, height: 400 }}
+          >
+            <Notepad initialFile={props.file} />
+          </Window>
+        );
+      
+      case 'explorer':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="My Documents"
+            icon="📁"
+            initialSize={{ width: 600, height: 450 }}
+          >
+            <FileExplorer onOpenFile={(file) => openWindow('notepad', { file })} />
+          </Window>
+        );
+      
+      case 'profile':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title={props.userId ? `${props.username || 'User'} Profile` : "My Profile"}
+            icon="👤"
+            initialSize={{ width: 500, height: 400 }}
+          >
+            <Profile userId={props.userId} onOpenProfile={(userId, username) => openWindow('profile', { userId, username })} />
+          </Window>
+        );
+      
+      case 'usersearch':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="Find Users"
+            icon="🔍"
+            initialSize={{ width: 400, height: 350 }}
+          >
+            <UserSearch onOpenProfile={(userId, username) => openWindow('profile', { userId, username })} />
+          </Window>
+        );
+      
+      case 'terminal':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="Command Prompt"
+            icon="💻"
+            initialSize={{ width: 600, height: 400 }}
+          >
+            <Terminal onOpenCV={() => openWindow('cv')} onClose={() => closeWindow(id)} />
+          </Window>
+        );
+      
+      case 'cv':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="Resume - CV"
+            icon="📄"
+            initialSize={{ width: 700, height: 500 }}
+          >
+            <CV />
+          </Window>
+        );
+      
       default:
         return null;
     }
@@ -438,6 +589,7 @@ const Desktop = () => {
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           setShowNotifications(false);
+          setShowStartMenu(false);
         }
       }}
       onMouseDown={(e) => {
@@ -479,26 +631,30 @@ const Desktop = () => {
         id="posts"
         icon="📝"
         label="Posts"
-        position={iconPositions.posts}
+        position={getIconPosition('posts')}
         onDoubleClick={() => openWindow('posts')}
         onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, posts: pos }))}
         gridToPixels={gridToPixels}
         snapToGrid={snapToGrid}
         draggedIcon={draggedIcon}
         setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
       />
 
       <DesktopIcon 
         id="create"
         icon="✏️"
         label="New Post"
-        position={iconPositions.create}
+        position={getIconPosition('create')}
         onDoubleClick={() => openWindow('create')}
         onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, create: pos }))}
         gridToPixels={gridToPixels}
         snapToGrid={snapToGrid}
         draggedIcon={draggedIcon}
         setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
       />
 
       {user?.isAdmin && (
@@ -506,13 +662,15 @@ const Desktop = () => {
           id="admin"
           icon="🛠️"
           label="Admin Panel"
-          position={iconPositions.admin}
+          position={getIconPosition('admin')}
           onDoubleClick={() => openWindow('admin')}
           onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, admin: pos }))}
           gridToPixels={gridToPixels}
           snapToGrid={snapToGrid}
           draggedIcon={draggedIcon}
           setDraggedIcon={setDraggedIcon}
+          gridCols={gridCols}
+          gridRows={gridRows}
         />
       )}
 
@@ -521,13 +679,15 @@ const Desktop = () => {
           id="login"
           icon="🔐"
           label="Login"
-          position={iconPositions.login}
+          position={getIconPosition('login')}
           onDoubleClick={() => openWindow('login')}
           onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, login: pos }))}
           gridToPixels={gridToPixels}
           snapToGrid={snapToGrid}
           draggedIcon={draggedIcon}
           setDraggedIcon={setDraggedIcon}
+          gridCols={gridCols}
+          gridRows={gridRows}
         />
       )}
 
@@ -535,14 +695,63 @@ const Desktop = () => {
         id="settings"
         icon="⚙️"
         label="Settings"
-        position={user ? iconPositions.settings : { x: 2, y: 0 }}
+        position={getIconPosition('settings')}
         onDoubleClick={() => openWindow('settings')}
         onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, settings: pos }))}
         gridToPixels={gridToPixels}
         snapToGrid={snapToGrid}
         draggedIcon={draggedIcon}
         setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
       />
+
+      <DesktopIcon 
+        id="notepad"
+        icon="📝"
+        label="Notepad"
+        position={getIconPosition('notepad')}
+        onDoubleClick={() => openWindow('notepad')}
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, notepad: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
+      />
+
+      <DesktopIcon 
+        id="explorer"
+        icon="📁"
+        label="My Documents"
+        position={getIconPosition('explorer')}
+        onDoubleClick={() => openWindow('explorer')}
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, explorer: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
+      />
+
+      {user && (
+        <DesktopIcon 
+          id="profile"
+          icon="👤"
+          label="My Profile"
+          position={getIconPosition('profile')}
+          onDoubleClick={() => openWindow('profile')}
+          onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, profile: pos }))}
+          gridToPixels={gridToPixels}
+          snapToGrid={snapToGrid}
+          draggedIcon={draggedIcon}
+          setDraggedIcon={setDraggedIcon}
+          gridCols={gridCols}
+          gridRows={gridRows}
+        />
+      )}
 
       {/* Selection Box */}
       {isSelecting && (
@@ -564,8 +773,30 @@ const Desktop = () => {
 
       {/* Taskbar */}
       <div className="taskbar">
-        <button className="start-button">
-          Start
+        <button 
+          className="start-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowStartMenu(!showStartMenu);
+            setShowNotifications(false);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            marginRight: '8px'
+          }}
+        >
+          <img 
+            src="/src/assets/start.png" 
+            alt="Start" 
+            style={{
+              height: '32px',
+              width: 'auto',
+              filter: showStartMenu ? 'brightness(0.8)' : 'none'
+            }}
+          />
         </button>
         
         {windows.map(window => (
@@ -581,6 +812,12 @@ const Desktop = () => {
             {window.type === 'admin' && '🛠️ Admin Panel'}
             {window.type === 'file' && `📄 ${window.props.file?.originalName || 'File'}`}
             {window.type === 'settings' && '⚙️ Settings'}
+            {window.type === 'notepad' && '📝 Notepad'}
+            {window.type === 'explorer' && '📁 My Documents'}
+            {window.type === 'profile' && '👤 My Profile'}
+            {window.type === 'usersearch' && '🔍 Find Users'}
+            {window.type === 'terminal' && '💻 Command Prompt'}
+            {window.type === 'cv' && '📄 Resume'}
           </div>
         ))}
 
@@ -696,6 +933,107 @@ const Desktop = () => {
                 }} style={{ fontSize: '9px', flex: 1 }}>Clear All</button>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* Start Menu */}
+        {showStartMenu && (
+          <div className="start-menu">
+            {/* Main Panel */}
+            <div className="start-menu-right">
+              {/* User Section */}
+              {user && (
+                <div className="start-menu-section">
+                  <div className="start-menu-user-info">
+                    <div className="start-menu-avatar">👤</div>
+                    <div>
+                      <div className="start-menu-username">{user.username}</div>
+                      <div className="start-menu-role">{user.isAdmin ? 'Administrator' : 'User'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Programs Section */}
+              <div className="start-menu-section">
+                <div className="start-menu-item" onClick={() => { openWindow('posts'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">📝</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Posts</div>
+                    <div className="start-menu-desc">View all posts</div>
+                  </div>
+                </div>
+                
+                <div className="start-menu-item" onClick={() => { openWindow('create'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">✏️</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">New Post</div>
+                    <div className="start-menu-desc">Create a new post</div>
+                  </div>
+                </div>
+                
+                {user?.isAdmin && (
+                  <div className="start-menu-item" onClick={() => { openWindow('admin'); setShowStartMenu(false); }}>
+                    <div className="start-menu-icon">🛠️</div>
+                    <div className="start-menu-text">
+                      <div className="start-menu-title">Admin Panel</div>
+                      <div className="start-menu-desc">System administration</div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="start-menu-item" onClick={() => { openWindow('settings'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">⚙️</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Settings</div>
+                    <div className="start-menu-desc">Configure preferences</div>
+                  </div>
+                </div>
+                
+                <div className="start-menu-item" onClick={() => { openWindow('notepad'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">📝</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Notepad</div>
+                    <div className="start-menu-desc">Text editor</div>
+                  </div>
+                </div>
+                
+                <div className="start-menu-item" onClick={() => { openWindow('usersearch'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">🔍</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Find Users</div>
+                    <div className="start-menu-desc">Search for members</div>
+                  </div>
+                </div>
+                
+                <div className="start-menu-item" onClick={() => { openWindow('terminal'); setShowStartMenu(false); }}>
+                  <div className="start-menu-icon">💻</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Command Prompt</div>
+                    <div className="start-menu-desc">Terminal interface</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bottom Section */}
+              <div className="start-menu-bottom">
+                {!user ? (
+                  <div className="start-menu-item" onClick={() => { openWindow('login'); setShowStartMenu(false); }}>
+                    <div className="start-menu-icon">🔐</div>
+                    <div className="start-menu-text">
+                      <div className="start-menu-title">Login</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="start-menu-item" onClick={() => { localStorage.removeItem('token'); setUser(null); setShowStartMenu(false); }}>
+                    <div className="start-menu-icon">🚪</div>
+                    <div className="start-menu-text">
+                      <div className="start-menu-title">Logout</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

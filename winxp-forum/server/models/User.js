@@ -36,6 +36,14 @@ const userSchema = new mongoose.Schema({
         type: Object,
         default: {}
     },
+    karma: {
+        postLikes: { type: Number, default: 0 },
+        commentLikes: { type: Number, default: 0 },
+        replyLikes: { type: Number, default: 0 },
+        postsCreated: { type: Number, default: 0 },
+        commentsCreated: { type: Number, default: 0 },
+        repliesCreated: { type: Number, default: 0 }
+    },
 }, {
     timestamps: true,
 });

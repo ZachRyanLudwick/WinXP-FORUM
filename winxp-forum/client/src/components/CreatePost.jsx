@@ -137,7 +137,9 @@ const CreatePost = ({ onPostCreated }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/posts', {
+      
+      // Check if user is admin by trying admin endpoint first, fallback to community
+      let response = await fetch('http://localhost:5001/api/posts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +153,24 @@ const CreatePost = ({ onPostCreated }) => {
           attachments
         })
       });
+
+      // If admin endpoint fails, try community endpoint
+      if (!response.ok && response.status === 403) {
+        response = await fetch('http://localhost:5001/api/posts/community', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            title, 
+            content, 
+            tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+            category,
+            attachments
+          })
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
