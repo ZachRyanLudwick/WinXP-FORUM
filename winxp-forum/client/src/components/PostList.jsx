@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
 const PostList = ({ onOpenPost, refreshTrigger }) => {
-  const [posts, setPosts] = useState([]);
+  const [officialPosts, setOfficialPosts] = useState([]);
+  const [communityPosts, setCommunityPosts] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('official');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
 
   useEffect(() => {
     fetchPosts();
@@ -35,18 +37,28 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
 
   const fetchPosts = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/posts');
-      if (!response.ok) {
-        throw new Error('Failed to fetch posts');
+      const [officialRes, communityRes] = await Promise.all([
+        fetch('http://localhost:5001/api/posts'),
+        fetch('http://localhost:5001/api/posts/community')
+      ]);
+      
+      if (officialRes.ok) {
+        const officialData = await officialRes.json();
+        setOfficialPosts(officialData || []);
       }
-      const data = await response.json();
-      setPosts(data || []);
+      
+      if (communityRes.ok) {
+        const communityData = await communityRes.json();
+        setCommunityPosts(communityData || []);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+
 
   if (loading) {
     return <div className="loading">Loading posts...</div>;
@@ -56,25 +68,30 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
     return <div className="error">{error}</div>;
   }
 
-  if (posts.length === 0) {
-    return <div>No posts yet. Be the first to create one!</div>;
-  }
-
-  const currentPosts = activeTab === 'bookmarks' ? bookmarks : posts;
+  const currentPosts = activeTab === 'official' ? officialPosts : 
+                      activeTab === 'community' ? communityPosts : bookmarks;
 
   return (
-    <div>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+
       <div style={{ 
         display: 'flex', 
         borderBottom: '1px solid #ccc', 
-        marginBottom: '8px' 
+        margin: '8px 8px 0 8px' 
       }}>
         <button 
-          className={`button ${activeTab === 'all' ? 'primary' : ''}`}
-          onClick={() => setActiveTab('all')}
+          className={`button ${activeTab === 'official' ? 'primary' : ''}`}
+          onClick={() => setActiveTab('official')}
           style={{ borderRadius: 0, marginRight: '2px' }}
         >
-          📝 All Posts ({posts.length})
+          🏛️ Official Posts ({officialPosts.length})
+        </button>
+        <button 
+          className={`button ${activeTab === 'community' ? 'primary' : ''}`}
+          onClick={() => setActiveTab('community')}
+          style={{ borderRadius: 0, marginRight: '2px' }}
+        >
+          👥 Community Posts ({communityPosts.length})
         </button>
         <button 
           className={`button ${activeTab === 'bookmarks' ? 'primary' : ''}`}
@@ -84,7 +101,7 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
           🔖 Bookmarks ({bookmarks.length})
         </button>
       </div>
-      <div className="post-list">
+      <div className="post-list" style={{ flex: 1, overflow: 'auto', margin: '0 8px 8px 8px' }}>
         {currentPosts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>
             {activeTab === 'bookmarks' ? 'No bookmarked posts yet.' : 'No posts yet. Be the first to create one!'}

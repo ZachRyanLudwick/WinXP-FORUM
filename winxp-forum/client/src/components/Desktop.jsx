@@ -488,20 +488,18 @@ const Desktop = () => {
         setDraggedIcon={setDraggedIcon}
       />
 
-      {user?.isAdmin && (
-        <DesktopIcon 
-          id="create"
-          icon="✏️"
-          label="New Post"
-          position={iconPositions.create}
-          onDoubleClick={() => openWindow('create')}
-          onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, create: pos }))}
-          gridToPixels={gridToPixels}
-          snapToGrid={snapToGrid}
-          draggedIcon={draggedIcon}
-          setDraggedIcon={setDraggedIcon}
-        />
-      )}
+      <DesktopIcon 
+        id="create"
+        icon="✏️"
+        label="New Post"
+        position={iconPositions.create}
+        onDoubleClick={() => openWindow('create')}
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, create: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+      />
 
       {user?.isAdmin && (
         <DesktopIcon 

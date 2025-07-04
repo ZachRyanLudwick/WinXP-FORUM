@@ -19,15 +19,52 @@ router.get('/bookmarks', auth, async (req, res) => {
     }
 });
 
-// get posts
+// get posts (admin posts only)
 router.get('/', async (req, res) => {
     try {
-        const posts = await Post.find()
+        const posts = await Post.find({ isCommunity: { $ne: true } })
             .populate('author', 'username avatar')
             .populate('comments.author', 'username avatar')
             .populate('comments.replies.author', 'username avatar')
             .sort({ createdAt: -1 });
         res.json(posts);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get community posts
+router.get('/community', async (req, res) => {
+    try {
+        const posts = await Post.find({ isCommunity: true })
+            .populate('author', 'username avatar')
+            .populate('comments.author', 'username avatar')
+            .sort({ createdAt: -1 });
+        res.json(posts);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Create post (any user - auto-sorted by admin status)
+router.post('/community', auth, async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        const User = require('../models/User');
+        const user = await User.findById(req.userId);
+
+        const post = new Post({
+            title,
+            content,
+            author: req.userId,
+            isCommunity: !user.isAdmin,
+            icon: user.isAdmin ? 'document.png' : 'community.png'
+        });
+
+        await post.save();
+        await post.populate('author', 'username avatar');
+
+        res.status(201).json(post);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }
