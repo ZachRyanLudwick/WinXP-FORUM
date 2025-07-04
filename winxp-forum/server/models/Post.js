@@ -32,6 +32,18 @@ const postSchema = new mongoose.Schema({
             default: Date.now,
         },
     }],
+    category: {
+        type: String,
+        default: 'general',
+        enum: ['general', 'vulnerability', 'malware', 'network', 'forensics', 'tools', 'tutorial']
+    },
+    attachments: [{
+        filename: String,
+        originalName: String,
+        mimetype: String,
+        size: Number,
+        isImage: Boolean
+    }],
     icon: {
         type: String,
         default: 'document.png'

@@ -36,7 +36,7 @@ npm init -y
 
 ### Step 2: Install Backend Dependencies
 ```bash
-npm install express mongoose cors dotenv bcryptjs jsonwebtoken multer
+npm install express mongoose cors dotenv bcryptjs jsonwebtoken multer 
 npm install -D nodemon
 ```
 
@@ -404,7 +404,7 @@ npm install
 
 ### Step 2: Install Frontend Dependencies
 ```bash
-npm install axios react-router-dom lucide-react
+npm install axios react-router-dom lucide-react react-quill --legacy-peer-deps
 ```
 
 ### Step 3: Create Windows XP Styles

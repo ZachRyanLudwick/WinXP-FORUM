@@ -13,9 +13,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/posts', require('./routes/posts'));
 
 // mongodb connection
 mongoose.connect(process.env.MONGODB_URI, {
@@ -30,9 +27,13 @@ mongoose.connection.on('error', (err) => {
     console.log('MongoDB connection error:', err);
 });
 
+// Static files
+app.use('/uploads', express.static('uploads'));
+
 // Routes
-const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/posts', require('./routes/posts'));
+app.use('/api/upload', require('./routes/upload'));
 
 app.listen(PORT, () => {
     console.log(`server running on ${PORT}`);

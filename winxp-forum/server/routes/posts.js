@@ -1,6 +1,7 @@
 const express = require('express');
 const Post = require('../models/Post');
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 
 const router = express.Router();
 
@@ -17,17 +18,19 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Create post
-router.post('/', auth, async (req, res) => {
+// Create post (admin only)
+router.post('/', adminAuth, async (req, res) => {
     try {
-        const { title, content, tags, icon } = req.body;
+        const { title, content, tags, category, icon, attachments } = req.body;
 
         const post = new Post({
             title,
             content,
             author: req.userId,
             tags: tags || [],
+            category: category || 'general',
             icon: icon || 'document.png',
+            attachments: attachments || [],
         });
 
         await post.save();

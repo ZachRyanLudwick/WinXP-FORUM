@@ -24,6 +24,10 @@ body {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   min-height: 100vh;
   overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .desktop {
@@ -96,6 +100,10 @@ body {
   background: var(--xp-white);
   border: 1px inset var(--xp-border);
   margin: 2px;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .taskbar {
@@ -206,6 +214,10 @@ body {
   border: 1px inset var(--xp-border);
   font-family: inherit;
   font-size: 11px;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .form-input:focus {
