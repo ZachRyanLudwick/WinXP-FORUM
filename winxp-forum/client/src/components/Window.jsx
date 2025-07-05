@@ -24,25 +24,27 @@ const Window = ({
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (isDragging) {
-        setPosition({
-          x: e.clientX - dragOffset.x,
-          y: e.clientY - dragOffset.y
-        });
+        const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x));
+        const newY = Math.max(0, Math.min(window.innerHeight - size.height - 40, e.clientY - dragOffset.y)); // 40px for taskbar
+        
+        const newPosition = { x: newX, y: newY };
+        setPosition(newPosition);
+        if (onUpdateState) {
+          onUpdateState({ position: newPosition });
+        }
       }
       if (isResizing) {
         const newWidth = Math.max(200, resizeStart.width + (e.clientX - resizeStart.x));
         const newHeight = Math.max(150, resizeStart.height + (e.clientY - resizeStart.y));
-        setSize({ width: newWidth, height: newHeight });
+        const newSize = { width: newWidth, height: newHeight };
+        setSize(newSize);
+        if (onUpdateState) {
+          onUpdateState({ size: newSize });
+        }
       }
     };
 
     const handleMouseUp = () => {
-      if (isDragging && onUpdateState) {
-        onUpdateState({ position });
-      }
-      if (isResizing && onUpdateState) {
-        onUpdateState({ size });
-      }
       setIsDragging(false);
       setIsResizing(false);
     };
@@ -56,7 +58,7 @@ const Window = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, isResizing, dragOffset, resizeStart]);
+  }, [isDragging, isResizing, dragOffset, resizeStart, position, size, onUpdateState]);
 
   const handleMouseDown = (e) => {
     if (e.target.closest('.window-button')) return;

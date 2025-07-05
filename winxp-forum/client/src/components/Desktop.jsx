@@ -13,6 +13,9 @@ import Profile from './Profile';
 import UserSearch from './UserSearch';
 import Terminal from './Terminal';
 import CV from './CV';
+import DMApp from './DMApp';
+import DMChat from './DMChat';
+import FriendsApp from './FriendsApp';
 import { saveIconPositions, loadIconPositions } from '../iconPositions';
 
 const DesktopIcon = ({ id, icon, label, position = { x: 0, y: 0 }, onDoubleClick, onPositionChange, gridToPixels, snapToGrid, draggedIcon, setDraggedIcon, gridCols, gridRows }) => {
@@ -138,11 +141,13 @@ const Desktop = () => {
   const [bookmarkRefresh, setBookmarkRefresh] = useState(0);
   const [minimizedWindows, setMinimizedWindows] = useState(new Set());
   const [windowStates, setWindowStates] = useState({});
+
   const [activeWindow, setActiveWindow] = useState(null);
   const [popup, setPopup] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadDMCount, setUnreadDMCount] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionBox, setSelectionBox] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -150,6 +155,8 @@ const Desktop = () => {
   const [iconPositions, setIconPositions] = useState({});
   const [draggedIcon, setDraggedIcon] = useState(null);
   const [showStartMenu, setShowStartMenu] = useState(false);
+  const [showProgramsMenu, setShowProgramsMenu] = useState(false);
+  const [programsMenuTimeout, setProgramsMenuTimeout] = useState(null);
   const [screenSize, setScreenSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   
   const GRID_SIZE = 80;
@@ -180,10 +187,11 @@ const Desktop = () => {
     visibleIcons.push('create');
     if (user?.isAdmin) visibleIcons.push('admin');
     if (!user) visibleIcons.push('login');
-    visibleIcons.push('settings');
     visibleIcons.push('notepad');
     visibleIcons.push('explorer');
     if (user) visibleIcons.push('profile');
+    visibleIcons.push('messages');
+    visibleIcons.push('settings');
     
     const iconIndex = visibleIcons.indexOf(iconId);
     if (iconIndex === -1) return defaultPos;
@@ -243,8 +251,27 @@ const Desktop = () => {
       }
     };
     
+    const fetchUnreadDMs = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5001/api/messages/unread-count', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadDMCount(data.count);
+        }
+      } catch (error) {
+        console.error('Error fetching unread DM count:', error);
+      }
+    };
+    
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5000); // Check every 5 seconds
+    fetchUnreadDMs();
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchUnreadDMs();
+    }, 3000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -304,15 +331,9 @@ const Desktop = () => {
     const maxZ = windows.length > 0 ? Math.max(...windows.map(w => w.zIndex)) : 0;
     const newZIndex = maxZ + 1;
     
-    // Better positioning logic to avoid overlap
-    const baseX = 100;
-    const baseY = 80;
-    const offsetX = 200; // Larger horizontal offset
-    const offsetY = 50;
-    
     const position = {
-      x: baseX + ((nextId - 1) % 4) * offsetX, // Cycle through 4 horizontal positions
-      y: baseY + Math.floor((nextId - 1) / 4) * offsetY // Stack vertically after 4 windows
+      x: 100 + ((nextId - 1) % 4) * 200,
+      y: 80 + Math.floor((nextId - 1) / 4) * 50
     };
     
     const newWindow = {
@@ -341,6 +362,11 @@ const Desktop = () => {
       ...prev,
       [id]: { ...prev[id], ...state }
     }));
+    
+    // Also update the window in the windows array
+    setWindows(prev => prev.map(w => 
+      w.id === id ? { ...w, ...state } : w
+    ));
   };
 
   const closeWindow = (id) => {
@@ -379,7 +405,7 @@ const Desktop = () => {
       onMinimize: () => minimizeWindow(id),
       onUpdateState: (state) => updateWindowState(id, state),
       onFocus: () => focusWindow(id),
-      initialPosition: savedState.position || position,
+      initialPosition: savedState.position || window.position,
       initialSize: savedState.size || (type === 'create' ? { width: 700, height: 600 } : { width: 600, height: 400 }),
       zIndex,
       isActive: activeWindow === id,
@@ -414,6 +440,9 @@ const Desktop = () => {
               onOpenFile={(file) => openWindow('file', { file })}
               onBookmarkChange={() => setBookmarkRefresh(prev => prev + 1)}
               bookmarkRefresh={bookmarkRefresh}
+              onOpenProfile={(userId, username) => openWindow('profile', { userId, username })}
+              showPopup={setPopup}
+              user={user}
             />
           </Window>
         );
@@ -427,7 +456,14 @@ const Desktop = () => {
             icon="✏️"
 
           >
-            <CreatePost onPostCreated={() => closeWindow(id)} />
+            <CreatePost 
+              onPostCreated={() => closeWindow(id)} 
+              user={user}
+              onClose={() => {
+                closeWindow(id);
+                if (!user) openWindow('login');
+              }}
+            />
           </Window>
         );
       
@@ -533,7 +569,12 @@ const Desktop = () => {
             icon="👤"
             initialSize={{ width: 500, height: 400 }}
           >
-            <Profile userId={props.userId} onOpenProfile={(userId, username) => openWindow('profile', { userId, username })} />
+            <Profile 
+              userId={props.userId} 
+              onOpenProfile={(userId, username) => openWindow('profile', { userId, username })}
+              onOpenChat={(userId, username) => openWindow('chat', { userId, username })}
+              showPopup={setPopup}
+            />
           </Window>
         );
       
@@ -576,6 +617,66 @@ const Desktop = () => {
           </Window>
         );
       
+      case 'messages':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="Messages"
+            icon="💬"
+            initialSize={{ width: 400, height: 500 }}
+          >
+            <DMApp 
+              onOpenChat={(userId, username) => openWindow('chat', { userId, username })} 
+              user={user}
+              onClose={() => {
+                closeWindow(id);
+                if (!user) openWindow('login');
+              }}
+              onOpenProfile={(userId, username) => openWindow('profile', { userId, username })}
+            />
+          </Window>
+        );
+      
+      case 'chat':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title={`Chat - ${props.username}`}
+            icon="💬"
+            initialSize={{ width: 450, height: 400 }}
+          >
+            <DMChat 
+              userId={props.userId} 
+              username={props.username}
+              onOpenProfile={(userId, username) => openWindow('profile', { userId, username })}
+            />
+          </Window>
+        );
+      
+      case 'friends':
+        return (
+          <Window 
+            key={id}
+            {...windowProps}
+            title="Friends"
+            icon="👥"
+            initialSize={{ width: 400, height: 500 }}
+          >
+            <FriendsApp 
+              onOpenProfile={(userId, username) => openWindow('profile', { userId, username })}
+              onOpenChat={(userId, username) => openWindow('chat', { userId, username })}
+              showPopup={setPopup}
+              user={user}
+              onClose={() => {
+                closeWindow(id);
+                if (!user) openWindow('login');
+              }}
+            />
+          </Window>
+        );
+      
       default:
         return null;
     }
@@ -590,6 +691,7 @@ const Desktop = () => {
         if (e.target === e.currentTarget) {
           setShowNotifications(false);
           setShowStartMenu(false);
+          setShowProgramsMenu(false);
         }
       }}
       onMouseDown={(e) => {
@@ -753,6 +855,21 @@ const Desktop = () => {
         />
       )}
 
+      <DesktopIcon 
+        id="messages"
+        icon="💬"
+        label="Messages"
+        position={getIconPosition('messages')}
+        onDoubleClick={() => openWindow('messages')}
+        onPositionChange={(pos) => setIconPositions(prev => ({ ...prev, messages: pos }))}
+        gridToPixels={gridToPixels}
+        snapToGrid={snapToGrid}
+        draggedIcon={draggedIcon}
+        setDraggedIcon={setDraggedIcon}
+        gridCols={gridCols}
+        gridRows={gridRows}
+      />
+
       {/* Selection Box */}
       {isSelecting && (
         <div style={{
@@ -818,6 +935,8 @@ const Desktop = () => {
             {window.type === 'usersearch' && '🔍 Find Users'}
             {window.type === 'terminal' && '💻 Command Prompt'}
             {window.type === 'cv' && '📄 Resume'}
+            {window.type === 'messages' && '💬 Messages'}
+            {window.type === 'chat' && `💬 ${window.props.username}`}
           </div>
         ))}
 
@@ -884,7 +1003,7 @@ const Desktop = () => {
                       }
                     }
                     
-                    // Open the related post
+                    // Open the related content
                     if (notif.postId) {
                       try {
                         const response = await fetch(`http://localhost:5001/api/posts/${notif.postId}`);
@@ -895,6 +1014,10 @@ const Desktop = () => {
                       } catch (error) {
                         console.error('Error fetching post:', error);
                       }
+                    } else if (notif.type === 'message' && notif.senderId) {
+                      openWindow('chat', { userId: notif.senderId, username: notif.senderUsername });
+                    } else if (notif.type === 'friend_request' || notif.type === 'friend_accepted') {
+                      openWindow('friends');
                     }
                     
                     setShowNotifications(false);
@@ -903,6 +1026,9 @@ const Desktop = () => {
                       {notif.type === 'like' && '❤️ New Like'}
                       {notif.type === 'comment' && '💬 New Comment'}
                       {notif.type === 'reply' && '↩️ New Reply'}
+                      {notif.type === 'message' && '💬 New Message'}
+                      {notif.type === 'friend_request' && '👥 Friend Request'}
+                      {notif.type === 'friend_accepted' && '✅ Friend Accepted'}
                     </div>
                     <div style={{ fontSize: '9px', color: '#666' }}>{notif.message}</div>
                     <div style={{ fontSize: '8px', color: '#999', marginTop: '2px' }}>
@@ -972,29 +1098,33 @@ const Desktop = () => {
                   </div>
                 </div>
                 
-                {user?.isAdmin && (
-                  <div className="start-menu-item" onClick={() => { openWindow('admin'); setShowStartMenu(false); }}>
-                    <div className="start-menu-icon">🛠️</div>
-                    <div className="start-menu-text">
-                      <div className="start-menu-title">Admin Panel</div>
-                      <div className="start-menu-desc">System administration</div>
-                    </div>
+                <div 
+                  className="start-menu-item"
+                  onMouseEnter={() => {
+                    if (programsMenuTimeout) clearTimeout(programsMenuTimeout);
+                    setShowProgramsMenu(true);
+                  }}
+                  onMouseLeave={() => {
+                    const timeout = setTimeout(() => setShowProgramsMenu(false), 300);
+                    setProgramsMenuTimeout(timeout);
+                  }}
+                  style={{ position: 'relative' }}
+                >
+                  <div className="start-menu-icon">📁</div>
+                  <div className="start-menu-text">
+                    <div className="start-menu-title">Programs</div>
+                    <div className="start-menu-desc">Applications</div>
                   </div>
-                )}
+                  <div style={{ marginLeft: 'auto', fontSize: '8px' }}>▶</div>
+                  
+
+                </div>
                 
                 <div className="start-menu-item" onClick={() => { openWindow('settings'); setShowStartMenu(false); }}>
                   <div className="start-menu-icon">⚙️</div>
                   <div className="start-menu-text">
                     <div className="start-menu-title">Settings</div>
                     <div className="start-menu-desc">Configure preferences</div>
-                  </div>
-                </div>
-                
-                <div className="start-menu-item" onClick={() => { openWindow('notepad'); setShowStartMenu(false); }}>
-                  <div className="start-menu-icon">📝</div>
-                  <div className="start-menu-text">
-                    <div className="start-menu-title">Notepad</div>
-                    <div className="start-menu-desc">Text editor</div>
                   </div>
                 </div>
                 
@@ -1036,6 +1166,89 @@ const Desktop = () => {
             </div>
           </div>
         )}
+        
+        {/* Programs Submenu */}
+        {showStartMenu && showProgramsMenu && (
+          <div 
+            style={{
+              position: 'fixed',
+              bottom: '42px',
+              left: '300px',
+              background: 'var(--xp-gray)',
+              border: '2px solid',
+              borderColor: 'var(--xp-white) var(--xp-shadow) var(--xp-shadow) var(--xp-white)',
+              boxShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+              minWidth: '200px',
+              zIndex: 3000
+            }}
+            onMouseEnter={() => {
+              if (programsMenuTimeout) clearTimeout(programsMenuTimeout);
+              setShowProgramsMenu(true);
+            }}
+            onMouseLeave={() => {
+              const timeout = setTimeout(() => setShowProgramsMenu(false), 300);
+              setProgramsMenuTimeout(timeout);
+            }}
+          >
+            <div className="start-menu-item" onClick={() => { openWindow('notepad'); setShowStartMenu(false); setShowProgramsMenu(false); }}>
+              <div className="start-menu-icon">📝</div>
+              <div className="start-menu-text">
+                <div className="start-menu-title">Notepad</div>
+              </div>
+            </div>
+            
+            <div className="start-menu-item" onClick={() => { openWindow('messages'); setShowStartMenu(false); setShowProgramsMenu(false); }}>
+              <div className="start-menu-icon" style={{ position: 'relative' }}>
+                💬
+                {unreadDMCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    right: '-4px',
+                    background: '#ff4757',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '14px',
+                    height: '14px',
+                    fontSize: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold'
+                  }}>
+                    {unreadDMCount > 9 ? '9+' : unreadDMCount}
+                  </span>
+                )}
+              </div>
+              <div className="start-menu-text">
+                <div className="start-menu-title">Messages</div>
+              </div>
+            </div>
+            
+            <div className="start-menu-item" onClick={() => { openWindow('explorer'); setShowStartMenu(false); setShowProgramsMenu(false); }}>
+              <div className="start-menu-icon">📁</div>
+              <div className="start-menu-text">
+                <div className="start-menu-title">My Documents</div>
+              </div>
+            </div>
+            
+            <div className="start-menu-item" onClick={() => { openWindow('friends'); setShowStartMenu(false); setShowProgramsMenu(false); }}>
+              <div className="start-menu-icon">👥</div>
+              <div className="start-menu-text">
+                <div className="start-menu-title">Friends</div>
+              </div>
+            </div>
+            
+            {user?.isAdmin && (
+              <div className="start-menu-item" onClick={() => { openWindow('admin'); setShowStartMenu(false); setShowProgramsMenu(false); }}>
+                <div className="start-menu-icon">🛠️</div>
+                <div className="start-menu-text">
+                  <div className="start-menu-title">Admin Panel</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Popup */}
@@ -1057,8 +1270,12 @@ let globalShowPopup = null;
 const DesktopWithPopup = () => {
   const [popup, setPopup] = useState(null);
   
-  const showPopup = (message, type = 'info', title = 'Notification') => {
-    setPopup({ message, type, title });
+  const showPopup = (popupData) => {
+    if (typeof popupData === 'string') {
+      setPopup({ message: popupData, type: 'info', title: 'Notification' });
+    } else {
+      setPopup(popupData);
+    }
   };
   
   React.useEffect(() => {

@@ -33,7 +33,7 @@ mongoose.connection.on('error', (err) => {
 });
 
 // Static files
-app.use('/uploads', express.static('uploads'));
+// Removed direct static serving - now handled by download route
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -43,6 +43,10 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/notifications', require('./routes/notifications').router);
 app.use('/api/user', require('./routes/user'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/friends', require('./routes/friends'));
+app.use('/api/download', require('./routes/download'));
 
 app.listen(PORT, () => {
     console.log(`server running on ${PORT}`);

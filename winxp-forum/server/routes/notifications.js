@@ -65,30 +65,33 @@ router.delete('/clear', auth, async (req, res) => {
 });
 
 // Create notification (internal use)
-const createNotification = async (recipientId, senderId, type, message, postId = null) => {
+const createNotification = async (recipientId, type, message, senderId = null, senderUsername = null, postId = null) => {
     try {
-        if (recipientId.toString() === senderId.toString()) return; // Don't notify self
+        if (senderId && recipientId.toString() === senderId.toString()) return; // Don't notify self
         
         // Check user notification preferences
         const User = require('../models/User');
         const recipient = await User.findById(recipientId);
-        const settings = recipient.notificationSettings || { likes: true, comments: true, replies: true };
+        const settings = recipient.notificationSettings || { likes: true, comments: true, replies: true, messages: true };
         
         // Map notification types to settings
         const typeMap = {
             'like': 'likes',
             'comment': 'comments', 
-            'reply': 'replies'
+            'reply': 'replies',
+            'message': 'messages'
         };
         
-        if (!settings[typeMap[type]]) return; // User disabled this notification type
+        if (settings[typeMap[type]] === false) return; // User disabled this notification type
         
         const notification = new Notification({
             recipient: recipientId,
             sender: senderId,
             type,
             message,
-            postId
+            postId,
+            senderId: senderId,
+            senderUsername: senderUsername
         });
         await notification.save();
     } catch (error) {

@@ -22,9 +22,18 @@ const userSchema = new mongoose.Schema({
     notificationSettings: {
         likes: { type: Boolean, default: true },
         comments: { type: Boolean, default: true },
-        replies: { type: Boolean, default: true }
+        replies: { type: Boolean, default: true },
+        messages: { type: Boolean, default: true }
+    },
+    dmSettings: {
+        allowDMs: { type: Boolean, default: true },
+        allowDMsFromFriends: { type: Boolean, default: true }
     },
     isAdmin: {
+        type: Boolean,
+        default: false,
+    },
+    isBanned: {
         type: Boolean,
         default: false,
     },
@@ -43,6 +52,11 @@ const userSchema = new mongoose.Schema({
         postsCreated: { type: Number, default: 0 },
         commentsCreated: { type: Number, default: 0 },
         repliesCreated: { type: Number, default: 0 }
+    },
+    rank: {
+        type: String,
+        enum: ['Newbie', 'Member', 'Expert', 'Elite', 'Legend'],
+        default: 'Newbie'
     },
 }, {
     timestamps: true,

@@ -10,16 +10,70 @@ const Login = ({ onLogin, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState(null);
 
+  const validateForm = () => {
+    if (!isLogin) {
+      // Registration validation
+      if (username.length < 4) {
+        setPopup({
+          title: 'Validation Error',
+          message: 'Username must be at least 4 characters long',
+          type: 'error',
+          onClose: () => setPopup(null)
+        });
+        return false;
+      }
+      
+      if (password.length < 8) {
+        setPopup({
+          title: 'Validation Error',
+          message: 'Password must be at least 8 characters long',
+          type: 'error',
+          onClose: () => setPopup(null)
+        });
+        return false;
+      }
+      
+      const hasUpperCase = /[A-Z]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+      
+      if (!hasUpperCase) {
+        setPopup({
+          title: 'Validation Error',
+          message: 'Password must contain at least one uppercase letter',
+          type: 'error',
+          onClose: () => setPopup(null)
+        });
+        return false;
+      }
+      
+      if (!hasSpecialChar) {
+        setPopup({
+          title: 'Validation Error',
+          message: 'Password must contain at least one special character (!@#$%^&*(),.?":{}|<>)',
+          type: 'error',
+          onClose: () => setPopup(null)
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    
+    if (!validateForm()) {
+      setLoading(false);
+      return;
+    }
 
     try {
       const endpoint = isLogin ? 'http://localhost:5001/api/auth/login' : 'http://localhost:5001/api/auth/register';
       const body = isLogin 
-        ? { email, password }
-        : { username, email, password };
+        ? { email: email.toLowerCase(), password }
+        : { username: username.toLowerCase(), email: email.toLowerCase(), password };
 
       const response = await fetch(endpoint, {
         method: 'POST',

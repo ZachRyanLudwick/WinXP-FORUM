@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /posts
+Allow: /community
+Allow: /users
+Allow: /search
+
+Disallow: /admin
+Disallow: /api/
+Disallow: /settings
+Disallow: /messages
+Disallow: /login
+
+Sitemap: https://xploithub.com/sitemap.xml
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1

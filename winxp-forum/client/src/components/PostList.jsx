@@ -44,12 +44,24 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
       
       if (officialRes.ok) {
         const officialData = await officialRes.json();
-        setOfficialPosts(officialData || []);
+        // Sort on frontend: pinned first, then by creation date
+        const sortedOfficial = (officialData || []).sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        setOfficialPosts(sortedOfficial);
       }
       
       if (communityRes.ok) {
         const communityData = await communityRes.json();
-        setCommunityPosts(communityData || []);
+        // Sort on frontend: pinned first, then by creation date
+        const sortedCommunity = (communityData || []).sort((a, b) => {
+          if (a.pinned && !b.pinned) return -1;
+          if (!a.pinned && b.pinned) return 1;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        setCommunityPosts(sortedCommunity);
       }
     } catch (err) {
       setError(err.message);
@@ -112,6 +124,7 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
           key={post._id} 
           className="post-item"
           onDoubleClick={() => onOpenPost(post)}
+          style={{ maxHeight: '120px' }}
         >
           <div className="post-icon">
             {post.category === 'vulnerability' ? '🚨' :
@@ -122,7 +135,10 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
              post.category === 'tutorial' ? '📚' : '🔍'}
           </div>
           <div className="post-info">
-            <div className="post-title">{post.title}</div>
+            <div className="post-title">
+              {post.pinned && <span style={{ color: '#e74c3c', marginRight: '4px' }}>📌</span>}
+              {post.title}
+            </div>
             <div className="post-meta">
               {post.category?.toUpperCase()} • by {post.author?.username || 'Unknown'} • {new Date(post.createdAt).toLocaleDateString()}
             </div>

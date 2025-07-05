@@ -4,9 +4,15 @@ const Settings = ({ user, onLogout, onClose }) => {
   const [notificationSettings, setNotificationSettings] = useState({
     likes: true,
     comments: true,
-    replies: true
+    replies: true,
+    messages: true
+  });
+  const [dmSettings, setDmSettings] = useState({
+    allowDMs: true,
+    allowDMsFromFriends: true
   });
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showDMSettings, setShowDMSettings] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -24,8 +30,16 @@ const Settings = ({ user, onLogout, onClose }) => {
         const settings = await response.json();
         setNotificationSettings(settings);
       }
+      
+      const dmResponse = await fetch('http://localhost:5001/api/user/dm-settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (dmResponse.ok) {
+        const dmData = await dmResponse.json();
+        setDmSettings(dmData);
+      }
     } catch (error) {
-      console.error('Error fetching notification settings:', error);
+      console.error('Error fetching settings:', error);
     }
   };
 
@@ -157,6 +171,15 @@ const Settings = ({ user, onLogout, onClose }) => {
                   />
                   ↩️ Replies to my comments
                 </label>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={notificationSettings.messages}
+                    onChange={(e) => updateNotificationSetting('messages', e.target.checked)}
+                  />
+                  💬 Direct messages
+                </label>
               </div>
             </div>
           )}
@@ -176,16 +199,84 @@ const Settings = ({ user, onLogout, onClose }) => {
           
           <button 
             className="button"
+            onClick={() => setShowDMSettings(!showDMSettings)}
             style={{ 
               textAlign: 'left', 
               padding: '8px 12px',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              background: showDMSettings ? '#e6f3ff' : 'transparent'
             }}
           >
-            🔒 Privacy (Coming Soon)
+            💬 Direct Messages {showDMSettings ? '▼' : '▶'}
           </button>
+          
+          {showDMSettings && (
+            <div style={{ 
+              marginLeft: '16px', 
+              padding: '8px', 
+              background: '#f8f9fa', 
+              border: '1px solid #dee2e6',
+              borderRadius: '4px'
+            }}>
+              <div style={{ fontSize: '10px', fontWeight: 'bold', marginBottom: '8px' }}>
+                Choose who can send you direct messages:
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={dmSettings.allowDMs}
+                    onChange={async (e) => {
+                      const newSettings = { ...dmSettings, allowDMs: e.target.checked };
+                      setDmSettings(newSettings);
+                      try {
+                        const token = localStorage.getItem('token');
+                        await fetch('http://localhost:5001/api/user/dm-settings', {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                          },
+                          body: JSON.stringify(newSettings)
+                        });
+                      } catch (error) {
+                        console.error('Error updating DM settings:', error);
+                      }
+                    }}
+                  />
+                  💬 Allow messages from everyone
+                </label>
+                
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={dmSettings.allowDMsFromFriends}
+                    onChange={async (e) => {
+                      const newSettings = { ...dmSettings, allowDMsFromFriends: e.target.checked };
+                      setDmSettings(newSettings);
+                      try {
+                        const token = localStorage.getItem('token');
+                        await fetch('http://localhost:5001/api/user/dm-settings', {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`
+                          },
+                          body: JSON.stringify(newSettings)
+                        });
+                      } catch (error) {
+                        console.error('Error updating DM settings:', error);
+                      }
+                    }}
+                  />
+                  👥 Allow messages from friends only
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

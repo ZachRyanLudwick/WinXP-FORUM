@@ -25,8 +25,7 @@ router.get('/', async (req, res) => {
         const posts = await Post.find({ isCommunity: { $ne: true } })
             .populate('author', 'username avatar')
             .populate('comments.author', 'username avatar')
-            .populate('comments.replies.author', 'username avatar')
-            .sort({ createdAt: -1 });
+            .populate('comments.replies.author', 'username avatar');
         res.json(posts);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -38,8 +37,7 @@ router.get('/community', async (req, res) => {
     try {
         const posts = await Post.find({ isCommunity: true })
             .populate('author', 'username avatar')
-            .populate('comments.author', 'username avatar')
-            .sort({ createdAt: -1 });
+            .populate('comments.author', 'username avatar');
         res.json(posts);
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
@@ -305,6 +303,42 @@ router.post('/:id/comments/:commentId/replies/:replyId/like', auth, async (req, 
         await post.populate('comments.author', 'username avatar');
         await post.populate('comments.replies.author', 'username avatar');
         res.json(post);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Pin/Unpin post (admin only)
+router.post('/:id/pin', auth, async (req, res) => {
+    try {
+        const User = require('../models/User');
+        const user = await User.findById(req.userId);
+        if (!user.isAdmin) {
+            return res.status(403).json({ message: 'Admin access required' });
+        }
+
+        const post = await Post.findById(req.params.id);
+        if (!post) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+
+        if (post.pinned) {
+            // Unpinning
+            post.pinned = false;
+        } else {
+            // Pinning - first unpin any existing pinned post in the same section
+            await Post.updateMany(
+                { 
+                    isCommunity: post.isCommunity,
+                    pinned: true 
+                },
+                { pinned: false }
+            );
+            post.pinned = true;
+        }
+        
+        await post.save();
+        res.json({ pinned: post.pinned });
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
     }

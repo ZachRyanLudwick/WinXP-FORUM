@@ -38,4 +38,39 @@ router.get('/icon-positions', auth, async (req, res) => {
   }
 });
 
+// Get DM settings
+router.get('/dm-settings', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('dmSettings');
+    res.json(user.dmSettings || { allowDMs: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update DM settings
+router.put('/dm-settings', auth, async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.userId, {
+      dmSettings: req.body
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get specific user's DM settings
+router.get('/:userId/dm-settings', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId).select('dmSettings');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user.dmSettings || { allowDMs: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

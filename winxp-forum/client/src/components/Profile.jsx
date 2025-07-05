@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { getRankInfo, RankBadge } from '../utils/rankUtils.jsx';
 
-const Profile = ({ userId = null, onOpenProfile }) => {
+
+const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [friendshipStatus, setFriendshipStatus] = useState(null);
 
   useEffect(() => {
     fetchProfile();
+    if (userId) {
+      checkFriendshipStatus();
+    }
   }, [userId]);
 
   const fetchProfile = async () => {
@@ -27,6 +33,72 @@ const Profile = ({ userId = null, onOpenProfile }) => {
     }
   };
 
+  const checkFriendshipStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5001/api/friends', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const friends = await response.json();
+        const isFriend = friends.some(friend => friend._id === userId);
+        if (isFriend) {
+          setFriendshipStatus('friends');
+          return;
+        }
+      }
+      
+      // Check pending requests
+      const requestsResponse = await fetch('http://localhost:5001/api/friends/requests', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (requestsResponse.ok) {
+        const requests = await requestsResponse.json();
+        const pendingRequest = requests.find(req => req.requester._id === userId);
+        if (pendingRequest) {
+          setFriendshipStatus('pending_received');
+          return;
+        }
+      }
+      
+      setFriendshipStatus('none');
+    } catch (error) {
+      console.error('Error checking friendship status:', error);
+    }
+  };
+
+  const sendFriendRequest = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5001/api/friends/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ recipientId: userId })
+      });
+      
+      if (response.ok) {
+        setFriendshipStatus('pending_sent');
+        showPopup && showPopup({
+          message: 'Friend request sent!',
+          type: 'success',
+          title: 'Request Sent'
+        });
+      } else {
+        const error = await response.json();
+        showPopup && showPopup({
+          message: error.message || 'Failed to send friend request',
+          type: 'error',
+          title: 'Error'
+        });
+      }
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading profile...</div>;
   }
@@ -44,12 +116,117 @@ const Profile = ({ userId = null, onOpenProfile }) => {
         <div className="profile-avatar">👤</div>
         <div className="profile-info">
           <h2 className="profile-username">{user.username}</h2>
-          <div className="profile-role">{user.isAdmin ? 'Administrator' : 'Member'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <RankBadge rank={user.rank || 'Newbie'} size="large" />
+            <div className="profile-role">{user.isAdmin ? 'Administrator' : 'Member'}</div>
+          </div>
           <div className="profile-joined">Joined {new Date(user.createdAt).toLocaleDateString()}</div>
         </div>
-        <div className="profile-karma">
-          <div className="karma-total">{stats.totalKarma}</div>
-          <div className="karma-label">Total Karma</div>
+        <div className="profile-actions">
+          <div className="profile-karma">
+            <div className="karma-total">{stats.totalKarma}</div>
+            <div className="karma-label">Total Karma</div>
+          </div>
+          {userId && (() => {
+            const token = localStorage.getItem('token');
+            if (token) {
+              try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.userId === userId) {
+                  return null; // Don't show button for own profile
+                }
+              } catch (e) {}
+            }
+            return (
+              <button 
+                className="button primary"
+                onClick={async () => {
+                  try {
+                    const response = await fetch(`http://localhost:5001/api/user/${userId}/dm-settings`, {
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (response.ok) {
+                      const settings = await response.json();
+                      if (!settings.allowDMs) {
+                        // Check if we're friends and friend DMs are allowed
+                        if (friendshipStatus === 'friends' && settings.allowDMsFromFriends) {
+                          onOpenChat && onOpenChat(userId, user.username);
+                          return;
+                        }
+                        showPopup && showPopup({
+                          message: 'This user has disabled direct messages in their settings.',
+                          type: 'info',
+                          title: 'Messages Disabled'
+                        });
+                        return;
+                      }
+                    }
+                    onOpenChat && onOpenChat(userId, user.username);
+                  } catch (error) {
+                    console.error('Error checking DM settings:', error);
+                    onOpenChat && onOpenChat(userId, user.username);
+                  }
+                }}
+                style={{ marginTop: '8px', fontSize: '10px', marginRight: '8px' }}
+              >
+                💬 Send Message
+              </button>
+            );
+          })()}
+          
+          {userId && (() => {
+            const token = localStorage.getItem('token');
+            if (token) {
+              try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.userId === userId) {
+                  return null; // Don't show button for own profile
+                }
+              } catch (e) {}
+            }
+            
+            if (friendshipStatus === 'friends') {
+              return (
+                <button 
+                  className="button"
+                  style={{ marginTop: '8px', fontSize: '10px', background: '#28a745', color: 'white' }}
+                  disabled
+                >
+                  👥 Friends
+                </button>
+              );
+            } else if (friendshipStatus === 'pending_sent') {
+              return (
+                <button 
+                  className="button"
+                  style={{ marginTop: '8px', fontSize: '10px' }}
+                  disabled
+                >
+                  ⏳ Request Sent
+                </button>
+              );
+            } else if (friendshipStatus === 'pending_received') {
+              return (
+                <button 
+                  className="button"
+                  style={{ marginTop: '8px', fontSize: '10px', background: '#ffc107', color: 'black' }}
+                  disabled
+                >
+                  📬 Request Received
+                </button>
+              );
+            } else {
+              return (
+                <button 
+                  className="button primary"
+                  onClick={sendFriendRequest}
+                  style={{ marginTop: '8px', fontSize: '10px' }}
+                >
+                  👥 Add Friend
+                </button>
+              );
+            }
+          })()}
         </div>
       </div>
 

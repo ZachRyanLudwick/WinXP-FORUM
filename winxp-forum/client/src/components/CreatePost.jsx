@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LoginRequired from './LoginRequired';
 
 // Simple rich text editor component
 const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) => {
@@ -70,7 +71,7 @@ const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) =
   );
 };
 
-const CreatePost = ({ onPostCreated }) => {
+const CreatePost = ({ onPostCreated, user, onClose }) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
@@ -79,6 +80,18 @@ const CreatePost = ({ onPostCreated }) => {
   const [loading, setLoading] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [showFileManager, setShowFileManager] = useState(false);
+  
+  const loginRequired = (
+    <LoginRequired 
+      user={user}
+      onClose={onClose}
+      appName="Create Post"
+      appIcon="✏️"
+      description="Please create an account or login to create and share posts"
+    />
+  );
+  
+  if (!user) return loginRequired;
 
   const handleFileUpload = async (file) => {
     const formData = new FormData();

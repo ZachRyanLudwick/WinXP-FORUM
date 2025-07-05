@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { getRankInfo } from '../utils/rankUtils.jsx';
 
-const CommentItem = ({ comment, postId, onUpdate }) => {
+const CommentItem = ({ comment, postId, onUpdate, onOpenProfile, showPopup }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [liked, setLiked] = useState(() => {
@@ -15,7 +16,14 @@ const CommentItem = ({ comment, postId, onUpdate }) => {
   const handleLike = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return alert('Please login to like comments');
+      if (!token) {
+        showPopup && showPopup({
+          message: 'Please create an account or login to like comments.',
+          type: 'info',
+          title: 'Login Required'
+        });
+        return;
+      }
       
       await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/like`, {
         method: 'POST',
@@ -33,7 +41,14 @@ const CommentItem = ({ comment, postId, onUpdate }) => {
     if (!replyText.trim()) return;
     try {
       const token = localStorage.getItem('token');
-      if (!token) return alert('Please login to reply');
+      if (!token) {
+        showPopup && showPopup({
+          message: 'Please create an account or login to reply to comments.',
+          type: 'info',
+          title: 'Login Required'
+        });
+        return;
+      }
       
       await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/reply`, {
         method: 'POST',
@@ -55,14 +70,23 @@ const CommentItem = ({ comment, postId, onUpdate }) => {
   return (
     <div style={{ padding: '12px 16px', borderBottom: '1px solid #eee', background: 'white' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-        <div style={{ 
-          width: '24px', height: '24px', borderRadius: '50%', background: '#007bff', 
-          color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-          fontSize: '10px', fontWeight: 'bold' 
-        }}>
+        <div 
+          style={{ 
+            width: '24px', height: '24px', borderRadius: '50%', background: '#007bff', 
+            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+            fontSize: '10px', fontWeight: 'bold', cursor: 'pointer',
+            border: `2px solid ${getRankInfo(comment.author?.rank || 'Newbie').color}`
+          }}
+          onClick={() => onOpenProfile && onOpenProfile(comment.author?._id, comment.author?.username)}
+        >
           {comment.author?.username?.charAt(0).toUpperCase()}
         </div>
-        <div style={{ fontSize: '11px', fontWeight: 'bold' }}>{comment.author?.username}</div>
+        <div 
+          style={{ fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', color: '#007bff' }}
+          onClick={() => onOpenProfile && onOpenProfile(comment.author?._id, comment.author?.username)}
+        >
+          {comment.author?.username}
+        </div>
         <div style={{ fontSize: '9px', color: '#666' }}>
           {new Date(comment.createdAt).toLocaleDateString()}
         </div>
@@ -108,7 +132,14 @@ const CommentItem = ({ comment, postId, onUpdate }) => {
         const handleReplyLike = async () => {
           try {
             const token = localStorage.getItem('token');
-            if (!token) return alert('Please login to like replies');
+            if (!token) {
+              showPopup && showPopup({
+                message: 'Please create an account or login to like replies.',
+                type: 'info',
+                title: 'Login Required'
+              });
+              return;
+            }
             
             await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/replies/${reply._id}/like`, {
               method: 'POST',
@@ -133,14 +164,23 @@ const CommentItem = ({ comment, postId, onUpdate }) => {
         return (
           <div key={idx} style={{ marginLeft: '32px', marginTop: '8px', padding: '8px', background: '#f8f9fa', borderRadius: '4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-              <div style={{ 
-                width: '20px', height: '20px', borderRadius: '50%', background: '#28a745', 
-                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                fontSize: '8px', fontWeight: 'bold' 
-              }}>
+              <div 
+                style={{ 
+                  width: '20px', height: '20px', borderRadius: '50%', background: '#28a745', 
+                  color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                  fontSize: '8px', fontWeight: 'bold', cursor: 'pointer',
+                  border: `2px solid ${getRankInfo(reply.author?.rank || 'Newbie').color}`
+                }}
+                onClick={() => onOpenProfile && onOpenProfile(reply.author?._id, reply.author?.username)}
+              >
                 {reply.author?.username?.charAt(0).toUpperCase()}
               </div>
-              <div style={{ fontSize: '10px', fontWeight: 'bold' }}>{reply.author?.username}</div>
+              <div 
+                style={{ fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', color: '#007bff' }}
+                onClick={() => onOpenProfile && onOpenProfile(reply.author?._id, reply.author?.username)}
+              >
+                {reply.author?.username}
+              </div>
               <div style={{ fontSize: '8px', color: '#666' }}>
                 {new Date(reply.createdAt).toLocaleDateString()}
               </div>
@@ -192,11 +232,25 @@ const renderContent = (content, onFileClick) => {
 };
 
 const FileViewer = ({ filename, originalName, onClose }) => {
-  const downloadFile = () => {
-    const link = document.createElement('a');
-    link.href = `http://localhost:5001/uploads/${filensame}`;
-    link.download = originalName;
-    link.click();
+  const downloadFile = async () => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/download/${filename}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.message || 'File not found or has been deleted');
+        return;
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = originalName;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download file. It may have been deleted.');
+    }
   };
 
   return (
@@ -216,7 +270,7 @@ const FileViewer = ({ filename, originalName, onClose }) => {
   );
 };
 
-const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => {
+const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpenProfile, showPopup, user }) => {
   const [liked, setLiked] = useState(() => {
     const token = localStorage.getItem('token');
     if (!token) return false;
@@ -233,6 +287,7 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
   const [comments, setComments] = useState(post?.comments || []);
   const [newComment, setNewComment] = useState('');
   const [bookmarked, setBookmarked] = useState(false);
+  const [pinned, setPinned] = useState(post?.pinned || false);
 
   const checkBookmarkStatus = async () => {
     try {
@@ -280,7 +335,11 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Please login to like posts');
+        showPopup && showPopup({
+          message: 'Please create an account or login to like posts.',
+          type: 'info',
+          title: 'Login Required'
+        });
         return;
       }
       
@@ -306,7 +365,11 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Please login to comment');
+        showPopup && showPopup({
+          message: 'Please create an account or login to comment on posts.',
+          type: 'info',
+          title: 'Login Required'
+        });
         return;
       }
       
@@ -348,7 +411,14 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
         <h2 style={{ fontSize: '16px', marginBottom: '8px', fontWeight: 'bold' }}>{post.title}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: '#666' }}>
           <span>{getCategoryIcon(post.category)} {post.category?.toUpperCase()}</span>
-          <span>By {post.author?.username || 'Unknown'}</span>
+          <span>
+            By <span 
+              style={{ cursor: 'pointer', color: '#007bff', textDecoration: 'underline' }}
+              onClick={() => onOpenProfile && onOpenProfile(post.author?._id, post.author?.username)}
+            >
+              {post.author?.username || 'Unknown'}
+            </span>
+          </span>
           <span>{new Date(post.createdAt).toLocaleDateString()}</span>
         </div>
         {post.tags && post.tags.length > 0 && (
@@ -474,7 +544,11 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
             try {
               const token = localStorage.getItem('token');
               if (!token) {
-                alert('Please login to bookmark posts');
+                showPopup && showPopup({
+                  message: 'Please create an account or login to bookmark posts.',
+                  type: 'info',
+                  title: 'Login Required'
+                });
                 return;
               }
               const response = await fetch(`http://localhost:5001/api/posts/${post._id}/bookmark`, {
@@ -501,6 +575,37 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
         >
           🔖 {bookmarked ? 'Bookmarked' : 'Bookmark'}
         </button>
+        
+        {user?.isAdmin && (
+          <button 
+            className="button"
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`http://localhost:5001/api/posts/${post._id}/pin`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  setPinned(data.pinned);
+                }
+              } catch (error) {
+                console.error('Error pinning post:', error);
+              }
+            }}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              background: pinned ? '#e74c3c' : 'transparent',
+              color: pinned ? 'white' : '#666',
+              border: pinned ? '1px solid #e74c3c' : '1px solid #ddd'
+            }}
+          >
+            📌 {pinned ? 'Pinned' : 'Pin Post'}
+          </button>
+        )}
       </div>
 
       {/* Comments Section */}
@@ -554,6 +659,8 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh }) => 
             comment={comment}
             postId={post._id}
             onUpdate={fetchPostData}
+            onOpenProfile={onOpenProfile}
+            showPopup={showPopup}
           />
         ))}
         

@@ -13,7 +13,7 @@ const notificationSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['like', 'comment', 'reply'],
+        enum: ['like', 'comment', 'reply', 'message', 'friend_request', 'friend_accepted'],
         required: true
     },
     message: {
@@ -27,6 +27,13 @@ const notificationSchema = new mongoose.Schema({
     read: {
         type: Boolean,
         default: false
+    },
+    senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    senderUsername: {
+        type: String
     }
 }, {
     timestamps: true

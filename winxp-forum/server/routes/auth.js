@@ -9,7 +9,31 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        let { username, email, password } = req.body;
+        
+        // Validate username
+        if (!username || username.length < 4) {
+            return res.status(400).json({ message: 'Username must be at least 4 characters long' });
+        }
+        
+        // Convert username to lowercase
+        username = username.toLowerCase();
+        
+        // Validate password
+        if (!password || password.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+        }
+        
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+        
+        if (!hasUpperCase) {
+            return res.status(400).json({ message: 'Password must contain at least one uppercase letter' });
+        }
+        
+        if (!hasSpecialChar) {
+            return res.status(400).json({ message: 'Password must contain at least one special character' });
+        }
 
         // check if user exists
         const existingUser = await User.findOne({
@@ -59,7 +83,10 @@ router.post('/register', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        let { email, password } = req.body;
+        
+        // Convert email to lowercase for consistency
+        email = email.toLowerCase();
 
         // find user
         const user = await User.findOne({ email });
