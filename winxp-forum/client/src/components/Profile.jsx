@@ -54,8 +54,17 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
       });
       if (requestsResponse.ok) {
         const requests = await requestsResponse.json();
-        const pendingRequest = requests.find(req => req.requester._id === userId);
-        if (pendingRequest) {
+        
+        // Check if we sent a request to this user
+        const sentRequest = requests.sent?.find(req => req.to._id === userId);
+        if (sentRequest) {
+          setFriendshipStatus('pending_sent');
+          return;
+        }
+        
+        // Check if this user sent us a request
+        const receivedRequest = requests.received?.find(req => req.from._id === userId);
+        if (receivedRequest) {
           setFriendshipStatus('pending_received');
           return;
         }

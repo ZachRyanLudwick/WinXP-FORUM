@@ -937,6 +937,7 @@ const Desktop = () => {
             {window.type === 'cv' && '📄 Resume'}
             {window.type === 'messages' && '💬 Messages'}
             {window.type === 'chat' && `💬 ${window.props.username}`}
+            {window.type === 'friends' && '👥 Friends'}
           </div>
         ))}
 

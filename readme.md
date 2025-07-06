@@ -36,7 +36,7 @@ npm init -y
 
 ### Step 2: Install Backend Dependencies
 ```bash
-npm install express mongoose cors dotenv bcryptjs jsonwebtoken multer 
+npm install express mongoose cors dotenv bcryptjs jsonwebtoken multer helmet express-rate-limit express-validator xss hpp cors
 npm install -D nodemon
 ```
 

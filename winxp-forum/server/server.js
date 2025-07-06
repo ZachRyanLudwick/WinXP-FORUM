@@ -1,6 +1,11 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+const xss = require('xss');
+const hpp = require('hpp');
 require('dotenv').config();
 const { createNotification, removeNotification } = require('./routes/notifications');
 
@@ -9,20 +14,21 @@ global.createNotification = createNotification;
 global.removeNotification = removeNotification;
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5000'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
-app.use(express.json());
+// Temporarily disabled security for development
+
+// Simple CORS for development
+app.use(cors());
+
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Temporarily disabled sanitization for development
 
 // mongodb connection
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-});
+mongoose.connect(process.env.MONGODB_URI);
 
 mongoose.connection.on('connected', () => {
     console.log('Connected to MongoDB');
@@ -35,7 +41,7 @@ mongoose.connection.on('error', (err) => {
 // Static files
 // Removed direct static serving - now handled by download route
 
-// Routes
+// Routes without rate limiting
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/files', require('./routes/files'));

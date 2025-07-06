@@ -1,14 +1,35 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', [
+    body('username')
+        .isLength({ min: 4, max: 20 })
+        .matches(/^[a-zA-Z0-9_]+$/)
+        .withMessage('Username must be 4-20 characters and contain only letters, numbers, and underscores'),
+    body('email')
+        .isEmail()
+        .withMessage('Please provide a valid email'),
+    body('password')
+        .isLength({ min: 8 })
+        .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+        .withMessage('Password must be at least 8 characters with uppercase, lowercase, number, and special character')
+], async (req, res) => {
     try {
+        // Check validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                message: errors.array()[0].msg 
+            });
+        }
+        
         let { username, email, password } = req.body;
         
         // Validate username
@@ -81,8 +102,23 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', [
+    body('email')
+        .isEmail()
+        .withMessage('Please provide a valid email'),
+    body('password')
+        .notEmpty()
+        .withMessage('Password is required')
+], async (req, res) => {
     try {
+        // Check validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ 
+                message: errors.array()[0].msg 
+            });
+        }
+        
         let { email, password } = req.body;
         
         // Convert email to lowercase for consistency
