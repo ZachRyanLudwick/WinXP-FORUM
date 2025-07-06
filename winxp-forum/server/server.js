@@ -18,8 +18,11 @@ const PORT = process.env.PORT || 5001;
 
 // Temporarily disabled security for development
 
-// Simple CORS for development
-app.use(cors());
+// CORS configuration for development
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 // Body parsing with size limits
 app.use(express.json({ limit: '10mb' }));
