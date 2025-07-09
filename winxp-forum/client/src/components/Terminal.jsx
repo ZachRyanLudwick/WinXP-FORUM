@@ -9,6 +9,7 @@ const Terminal = ({ onOpenCV, onClose }) => {
     'C:\\>'
   ]);
   const [currentInput, setCurrentInput] = useState('');
+  const [clearing, setClearing] = useState(false);
   const terminalRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -37,7 +38,7 @@ const Terminal = ({ onOpenCV, onClose }) => {
     cls: {
       description: 'Clear screen',
       execute: () => {
-        setHistory(['C:\\>']);
+        setClearing(true);
         return [];
       }
     },
@@ -94,14 +95,23 @@ const Terminal = ({ onOpenCV, onClose }) => {
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
-      const output = executeCommand(currentInput);
-      const newHistory = [
-        ...history,
-        `C:\\>${currentInput}`,
-        ...output,
-        'C:\\>'
-      ];
-      setHistory(newHistory);
+      const commandText = currentInput;
+      const output = executeCommand(commandText);
+
+      if (commandText.toLowerCase() === 'cls') {
+        setTimeout(() => {
+          setHistory(['C:\\>']);
+          setClearing(false);
+        }, 500);
+      } else {
+        setHistory([
+          ...history,
+          `C:\\>${commandText}`,
+          ...output,
+          'C:\\>'
+        ]);
+      }
+
       setCurrentInput('');
     }
   };
@@ -110,23 +120,33 @@ const Terminal = ({ onOpenCV, onClose }) => {
     if (terminalRef.current) {
       terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
     }
-  }, [history]);
+  }, [history, clearing]);
 
   useEffect(() => {
-    if (inputRef.current) {
+    if (inputRef.current && !clearing) {
       inputRef.current.focus();
     }
-  }, []);
+  }, [clearing]);
 
   return (
     <div className="terminal" onClick={() => inputRef.current?.focus()}>
-      <div className="terminal-content" ref={terminalRef}>
+      <div
+        className="terminal-content"
+        ref={terminalRef}
+        style={{
+          transition: 'opacity 0.5s ease',
+          opacity: clearing ? 0 : 1,
+          maxHeight: '400px',
+          overflowY: 'auto',
+          userSelect: clearing ? 'none' : 'auto',
+        }}
+      >
         {history.map((line, index) => (
           <div key={index} className="terminal-line">
             {line === 'C:\\>' ? (
-              <div className="terminal-prompt">
+              <div className="terminal-prompt" style={{ display: 'flex', alignItems: 'center' }}>
                 <span className="prompt-text">C:\&gt;</span>
-                {index === history.length - 1 && (
+                {index === history.length - 1 && !clearing && (
                   <input
                     ref={inputRef}
                     type="text"

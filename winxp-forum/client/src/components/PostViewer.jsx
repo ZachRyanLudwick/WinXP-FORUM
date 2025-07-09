@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { getRankInfo } from '../utils/rankUtils.jsx';
+import { apiCall, API_URL } from '../utils/api';
 
 const CommentItem = ({ comment, postId, onUpdate, onOpenProfile, showPopup }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -25,9 +26,8 @@ const CommentItem = ({ comment, postId, onUpdate, onOpenProfile, showPopup }) =>
         return;
       }
       
-      await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/like`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+      await apiCall(`/api/posts/${postId}/comments/${comment._id}/like`, {
+        method: 'POST'
       });
       
       setLiked(!liked);
@@ -50,12 +50,8 @@ const CommentItem = ({ comment, postId, onUpdate, onOpenProfile, showPopup }) =>
         return;
       }
       
-      await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/reply`, {
+      await apiCall(`/api/posts/${postId}/comments/${comment._id}/reply`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ content: replyText })
       });
       
@@ -141,9 +137,8 @@ const CommentItem = ({ comment, postId, onUpdate, onOpenProfile, showPopup }) =>
               return;
             }
             
-            await fetch(`http://localhost:5001/api/posts/${postId}/comments/${comment._id}/replies/${reply._id}/like`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${token}` }
+            await apiCall(`/api/posts/${postId}/comments/${comment._id}/replies/${reply._id}/like`, {
+              method: 'POST'
             });
             
             onUpdate();
@@ -234,7 +229,7 @@ const renderContent = (content, onFileClick) => {
 const FileViewer = ({ filename, originalName, onClose }) => {
   const downloadFile = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/download/${filename}`);
+      const response = await fetch(`${API_URL}/api/download/${filename}`);
       if (!response.ok) {
         const errorData = await response.json();
         alert(errorData.message || 'File not found or has been deleted');
@@ -293,9 +288,7 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const response = await fetch('http://localhost:5001/api/posts/bookmarks', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/posts/bookmarks');
       if (response.ok) {
         const bookmarks = await response.json();
         setBookmarked(bookmarks.some(b => b._id === post._id));
@@ -311,7 +304,7 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
 
   const fetchPostData = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/api/posts/${post._id}`);
+      const response = await apiCall(`/api/posts/${post._id}`);
       if (response.ok) {
         const updatedPost = await response.json();
         setComments(updatedPost.comments);
@@ -343,11 +336,8 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
         return;
       }
       
-      const response = await fetch(`http://localhost:5001/api/posts/${post._id}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await apiCall(`/api/posts/${post._id}/like`, {
+        method: 'POST'
       });
       
       if (response.ok) {
@@ -373,12 +363,8 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
         return;
       }
       
-      const response = await fetch(`http://localhost:5001/api/posts/${post._id}/comments`, {
+      const response = await apiCall(`/api/posts/${post._id}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ content: newComment })
       });
       
@@ -540,6 +526,39 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
         </button>
         <button 
           className="button"
+          onClick={() => {
+            const postUrl = `${window.location.origin}?post=${post._id}`;
+            navigator.clipboard.writeText(postUrl).then(() => {
+              showPopup && showPopup({
+                message: 'Post link copied to clipboard!',
+                type: 'success',
+                title: 'Link Copied'
+              });
+            }).catch(() => {
+              // Fallback for older browsers
+              const textArea = document.createElement('textarea');
+              textArea.value = postUrl;
+              document.body.appendChild(textArea);
+              textArea.select();
+              document.execCommand('copy');
+              document.body.removeChild(textArea);
+              showPopup && showPopup({
+                message: 'Post link copied to clipboard!',
+                type: 'success',
+                title: 'Link Copied'
+              });
+            });
+          }}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px'
+          }}
+        >
+          🔗 Share
+        </button>
+        <button 
+          className="button"
           onClick={async () => {
             try {
               const token = localStorage.getItem('token');
@@ -551,9 +570,8 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
                 });
                 return;
               }
-              const response = await fetch(`http://localhost:5001/api/posts/${post._id}/bookmark`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${token}` }
+              const response = await apiCall(`/api/posts/${post._id}/bookmark`, {
+                method: 'POST'
               });
               if (response.ok) {
                 const data = await response.json();
@@ -582,9 +600,8 @@ const PostViewer = ({ post, onOpenFile, onBookmarkChange, bookmarkRefresh, onOpe
             onClick={async () => {
               try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`http://localhost:5001/api/posts/${post._id}/pin`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${token}` }
+                const response = await apiCall(`/api/posts/${post._id}/pin`, {
+                  method: 'POST'
                 });
                 if (response.ok) {
                   const data = await response.json();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Window from './Window';
+import { apiCall, API_URL } from '../utils/api';
 import PostList from './PostList';
 import PostViewer from './PostViewer';
 import CreatePost from './CreatePost';
@@ -103,7 +104,7 @@ const DesktopIcon = ({ id, icon, label, position = { x: 0, y: 0 }, onDoubleClick
 const FileViewer = ({ filename, originalName, onClose }) => {
   const downloadFile = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/uploads/${filename}`);
+      const response = await fetch(`${API_URL}/uploads/${filename}`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -138,6 +139,7 @@ const Desktop = () => {
   const [windows, setWindows] = useState([]);
   const [nextId, setNextId] = useState(1);
   const [user, setUser] = useState(null);
+  const sharedPostOpened = React.useRef(false);
   const [bookmarkRefresh, setBookmarkRefresh] = useState(0);
   const [minimizedWindows, setMinimizedWindows] = useState(new Set());
   const [windowStates, setWindowStates] = useState({});
@@ -220,9 +222,7 @@ const Desktop = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/profile/search/${query}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall(`/api/profile/search/${query}`);
       if (response.ok) {
         const users = await response.json();
         setSearchResults(users);
@@ -238,9 +238,7 @@ const Desktop = () => {
     const fetchNotifications = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5001/api/notifications', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await apiCall('/api/notifications');
         if (response.ok) {
           const data = await response.json();
           setNotifications(data);
@@ -254,9 +252,7 @@ const Desktop = () => {
     const fetchUnreadDMs = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5001/api/messages/unread-count', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await apiCall('/api/messages/unread-count');
         if (response.ok) {
           const data = await response.json();
           setUnreadDMCount(data.count);
@@ -297,9 +293,7 @@ const Desktop = () => {
     const token = localStorage.getItem('token');
     if (token) {
       // Verify token and get user info
-      fetch('http://localhost:5001/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      apiCall('/api/auth/me')
       .then(res => res.json())
       .then(data => {
         if (data.user) {
@@ -319,6 +313,27 @@ const Desktop = () => {
       });
     }
   }, []);
+  
+  // Handle shared post URLs
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('post');
+    if (postId && !sharedPostOpened.current) {
+      sharedPostOpened.current = true;
+      apiCall(`/api/posts/${postId}`)
+        .then(res => res.json())
+        .then(post => {
+          if (post && !post.message) {
+            openWindow('post', { post });
+            // Clean up URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading shared post:', error);
+        });
+    }
+  }, []); // Run only once
 
   // Save icon positions when they change
   useEffect(() => {
@@ -993,9 +1008,8 @@ const Desktop = () => {
                     if (!notif.read) {
                       try {
                         const token = localStorage.getItem('token');
-                        await fetch(`http://localhost:5001/api/notifications/${notif._id}/read`, {
-                          method: 'POST',
-                          headers: { Authorization: `Bearer ${token}` }
+                        await apiCall(`/api/notifications/${notif._id}/read`, {
+                          method: 'POST'
                         });
                         setNotifications(prev => prev.map((n, i) => i === index ? { ...n, read: true } : n));
                         setUnreadCount(prev => Math.max(0, prev - 1));
@@ -1007,7 +1021,7 @@ const Desktop = () => {
                     // Open the related content
                     if (notif.postId) {
                       try {
-                        const response = await fetch(`http://localhost:5001/api/posts/${notif.postId}`);
+                        const response = await apiCall(`/api/posts/${notif.postId}`);
                         if (response.ok) {
                           const post = await response.json();
                           openWindow('post', { post });
@@ -1048,9 +1062,8 @@ const Desktop = () => {
                 <button className="button" onClick={async () => {
                   try {
                     const token = localStorage.getItem('token');
-                    await fetch('http://localhost:5001/api/notifications/clear', {
-                      method: 'DELETE',
-                      headers: { Authorization: `Bearer ${token}` }
+                    await apiCall('/api/notifications/clear', {
+                      method: 'DELETE'
                     });
                     setNotifications([]);
                     setUnreadCount(0);

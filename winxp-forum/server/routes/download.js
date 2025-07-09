@@ -4,10 +4,15 @@ const fs = require('fs');
 
 const router = express.Router();
 
-// Download file with proper error handling
+// Serve file (images directly, others as download)
 router.get('/:filename', (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(__dirname, '../uploads', filename);
+  
+  // Set CORS headers
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
   
   // Check if file exists
   if (!fs.existsSync(filePath)) {
@@ -20,15 +25,24 @@ router.get('/:filename', (req, res) => {
     return res.status(404).json({ message: 'File is empty or corrupted' });
   }
   
-  // Send file
-  res.download(filePath, (err) => {
-    if (err) {
-      console.error('Download error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ message: 'Download failed' });
+  // Check if it's an image
+  const ext = path.extname(filename).toLowerCase();
+  const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+  
+  if (imageExts.includes(ext)) {
+    // Serve image directly
+    res.sendFile(filePath);
+  } else {
+    // Force download for other files
+    res.download(filePath, (err) => {
+      if (err) {
+        console.error('Download error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Download failed' });
+        }
       }
-    }
-  });
+    });
+  }
 });
 
 module.exports = router;

@@ -1,22 +1,22 @@
 import React from 'react';
 
+        // <p style="margin: 5px 0; color: #666;">
+        //   📧 your.email@example.com | 🌐 yourwebsite.com | 💼 LinkedIn
+        // </p>
+
 const CV = () => {
   const cvHTML = `
     <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: white;">
       <header style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px;">
-        <h1 style="margin: 0; color: #333; font-size: 2.5em;">Your Name</h1>
-        <p style="margin: 5px 0; color: #666; font-size: 1.1em;">Full Stack Developer</p>
-        <p style="margin: 5px 0; color: #666;">
-          📧 your.email@example.com | 📱 +1 (555) 123-4567 | 🌐 yourwebsite.com | 💼 LinkedIn
-        </p>
+        <h1 style="margin: 0; color: #333; font-size: 2.5em;">Zach Ludwick</h1>
+        <p style="margin: 5px 0; color: #666; font-size: 1.1em;">Full-Stack Developer & Cybersecurity Researcher</p>
+        
       </header>
 
       <section style="margin-bottom: 30px;">
-        <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Professional Summary</h2>
+        <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Profile Summary</h2>
         <p style="line-height: 1.6; color: #555;">
-          Experienced Full Stack Developer with 5+ years of expertise in React, Node.js, and modern web technologies. 
-          Passionate about creating user-friendly applications and solving complex problems. Proven track record of 
-          delivering high-quality software solutions in fast-paced environments.
+          Hands-on ethical hacker and full-stack developer with a deep interest in cybersecurity, reverse engineering, and secure application design. Skilled in building encrypted platforms, stealth malware testing, and real-time communication tools. Practical experience across Windows, macOS, and embedded hardware like Raspberry Pi.
         </p>
       </section>
 
@@ -24,89 +24,73 @@ const CV = () => {
         <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Technical Skills</h2>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
           <div>
-            <h4 style="margin: 0 0 10px 0; color: #444;">Frontend</h4>
-            <p style="margin: 0; color: #666;">React, JavaScript, TypeScript, HTML5, CSS3, Tailwind CSS</p>
+            <h4 style="margin: 0 0 10px 0; color: #444;">Languages & Frameworks</h4>
+            <p style="margin: 0; color: #666;">JavaScript (React, Node.js), Python (Flask), HTML/CSS (Tailwind), Bash</p>
           </div>
           <div>
-            <h4 style="margin: 0 0 10px 0; color: #444;">Backend</h4>
-            <p style="margin: 0; color: #666;">Node.js, Express.js, Python, RESTful APIs, GraphQL</p>
+            <h4 style="margin: 0 0 10px 0; color: #444;">Database & Protocols</h4>
+            <p style="margin: 0; color: #666;">MongoDB, WebSockets, WebRTC, REST APIs, Express.js</p>
           </div>
           <div>
-            <h4 style="margin: 0 0 10px 0; color: #444;">Database</h4>
-            <p style="margin: 0; color: #666;">MongoDB, PostgreSQL, MySQL, Redis</p>
+            <h4 style="margin: 0 0 10px 0; color: #444;">Security Tools & Concepts</h4>
+            <p style="margin: 0; color: #666;">Wireshark, Docker, PBKDF2, bcrypt, JWT, SMM injection, E2EE, Linux, VMs</p>
           </div>
           <div>
-            <h4 style="margin: 0 0 10px 0; color: #444;">Tools & Others</h4>
-            <p style="margin: 0; color: #666;">Git, Docker, AWS, Linux, Agile/Scrum</p>
+            <h4 style="margin: 0 0 10px 0; color: #444;">Deployment & DevOps</h4>
+            <p style="margin: 0; color: #666;">Vite, Firebase, Nginx, GitHub Actions, Raspberry Pi</p>
           </div>
         </div>
       </section>
 
       <section style="margin-bottom: 30px;">
-        <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Work Experience</h2>
-        
-        <div style="margin-bottom: 25px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <h3 style="margin: 0; color: #333;">Senior Full Stack Developer</h3>
-            <span style="color: #666; font-weight: bold;">2022 - Present</span>
-          </div>
-          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">Tech Company Inc. - Remote</p>
-          <ul style="color: #555; line-height: 1.6;">
-            <li>Led development of React-based web applications serving 100K+ users</li>
-            <li>Architected and implemented RESTful APIs using Node.js and Express</li>
-            <li>Improved application performance by 40% through code optimization</li>
-            <li>Mentored junior developers and conducted code reviews</li>
-          </ul>
-        </div>
-
-        <div style="margin-bottom: 25px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <h3 style="margin: 0; color: #333;">Full Stack Developer</h3>
-            <span style="color: #666; font-weight: bold;">2020 - 2022</span>
-          </div>
-          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">StartupXYZ - San Francisco, CA</p>
-          <ul style="color: #555; line-height: 1.6;">
-            <li>Developed and maintained multiple client-facing web applications</li>
-            <li>Collaborated with design team to implement responsive UI/UX designs</li>
-            <li>Integrated third-party APIs and payment processing systems</li>
-            <li>Participated in agile development processes and sprint planning</li>
-          </ul>
-        </div>
+        <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cybersecurity Practices</h2>
+        <ul style="color: #555; line-height: 1.6; padding-left: 20px;">
+          <li><strong>Malware Analysis & Reverse Engineering:</strong> Analyzed tools like XenoRAT in sandboxed VMs, studying AV/EDR evasion, stealth techniques, and persistence using custom crypters and System Management Mode (SMM) injection.</li>
+          <li><strong>Encrypted Systems:</strong> Built real-time E2EE messaging apps with client-side keypair generation, PBKDF2-encrypted private keys, and zero-knowledge cloud backups.</li>
+          <li><strong>Authentication & Session Security:</strong> Developed secure login systems with invite-only access, rate limiting, JWT (HttpOnly cookies), auto-expiring sessions, and device management with key revocation support.</li>
+          <li><strong>File Upload Hardening:</strong> Mitigated web upload vulnerabilities via strict MIME type and extension validation, sandboxing, and upload sanitization.</li>
+          <li><strong>Red Team Simulation:</strong> Conducted simulated phishing, remote payload execution, and persistence experiments in testbed environments.</li>
+          <li><strong>Privacy & Data Control:</strong> Implemented self-destructing messages (24h), auto-deleting accounts after inactivity, and metadata stripping on uploads.</li>
+        </ul>
       </section>
 
       <section style="margin-bottom: 30px;">
-        <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Education</h2>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <h3 style="margin: 0; color: #333;">Bachelor of Science in Computer Science</h3>
-          <span style="color: #666; font-weight: bold;">2016 - 2020</span>
-        </div>
-        <p style="margin: 0; color: #666; font-style: italic;">University of Technology</p>
-      </section>
-
-      <section>
         <h2 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Projects</h2>
-        
+
         <div style="margin-bottom: 20px;">
-          <h3 style="margin: 0 0 5px 0; color: #333;">Windows XP Forum System</h3>
-          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">React, Node.js, MongoDB, Express.js</p>
+          <h3 style="margin: 0 0 5px 0; color: #333;">Tinq – Encrypted Messaging Platform</h3>
+          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">React, Vite, Node.js, Express, MongoDB, WebRTC</p>
           <p style="color: #555; line-height: 1.6;">
-            Built a nostalgic Windows XP-themed forum with real-time features, user profiles, 
-            file management, and authentic XP UI components. Includes karma system, notifications, 
-            and responsive design.
+            WhatsApp/Discord-style app with full E2EE support, self-destructing messages, device management, session expiry, and zero-knowledge message storage. Includes master password encryption and public/private key infrastructure.
           </p>
         </div>
 
         <div style="margin-bottom: 20px;">
-          <h3 style="margin: 0 0 5px 0; color: #333;">E-Commerce Platform</h3>
-          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">React, Node.js, PostgreSQL, Stripe API</p>
+          <h3 style="margin: 0 0 5px 0; color: #333;">XPLOIT HUB – Cybersecurity Forum</h3>
+          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">Node.js, React, Tailwind, MongoDB</p>
           <p style="color: #555; line-height: 1.6;">
-            Developed a full-featured e-commerce platform with user authentication, 
-            product catalog, shopping cart, and payment processing. Implemented admin 
-            dashboard for inventory management.
+            A Windows XP-style forum with file uploads, DMs, and a custom karma system. Designed for cybersec researchers to share exploits and notes in a nostalgic desktop UI.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="margin: 0 0 5px 0; color: #333;">Real-Time WebRTC Screen Sharing</h3>
+          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">JavaScript, WebRTC, Node.js</p>
+          <p style="color: #555; line-height: 1.6;">
+            Ultra-low-latency browser viewer with fullscreen toggle, live preview, and no control access for viewers. Includes automatic audio/video stream start.
+          </p>
+        </div>
+
+        <div>
+          <h3 style="margin: 0 0 5px 0; color: #333;">Custom Crypter & Payload System</h3>
+          <p style="margin: 0 0 10px 0; color: #666; font-style: italic;">Nim, Python, Batch, Windows APIs</p>
+          <p style="color: #555; line-height: 1.6;">
+            Built a crypter for ethical malware testing using silent service installation, runtime payload decryption, registry-based persistence, and stealth AV bypass research techniques.
           </p>
         </div>
       </section>
     </div>
+
   `;
 
   return (

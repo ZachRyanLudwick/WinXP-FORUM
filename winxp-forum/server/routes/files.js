@@ -1,4 +1,5 @@
 const express = require('express');
+const { body, param, validationResult } = require('express-validator');
 const File = require('../models/File');
 const auth = require('../middleware/auth');
 
@@ -15,7 +16,15 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create/Save file
-router.post('/', auth, async (req, res) => {
+router.post('/', [
+  auth,
+  body('name').isLength({ min: 1, max: 100 }).trim().escape(),
+  body('content').isLength({ max: 100000 }) // 100KB limit
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: errors.array()[0].msg });
+  }
   try {
     const { name, content } = req.body;
     
@@ -45,7 +54,14 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Get single file
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', [
+  auth,
+  param('id').isMongoId()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: 'Invalid file ID' });
+  }
   try {
     const file = await File.findOne({ _id: req.params.id, owner: req.userId });
     if (!file) {

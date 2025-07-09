@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import LoginRequired from './LoginRequired';
+import { apiCall, API_URL } from '../utils/api';
 
 // Simple rich text editor component
 const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) => {
   const [showToolbar, setShowToolbar] = useState(false);
+  const [imagePreviewSizes, setImagePreviewSizes] = useState({});
   
   const insertText = (before, after = '') => {
     const textarea = document.getElementById('content-editor');
@@ -19,6 +21,31 @@ const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) =
     }, 0);
   };
   
+  // Extract images from content for preview
+  const getImagesFromContent = () => {
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const images = [];
+    let match;
+    while ((match = imageRegex.exec(value)) !== null) {
+      images.push({
+        alt: match[1],
+        src: match[2],
+        fullMatch: match[0]
+      });
+    }
+    return images;
+  };
+
+  const updateImageSize = (imageSrc, newSize) => {
+    setImagePreviewSizes(prev => ({ ...prev, [imageSrc]: newSize }));
+  };
+
+  const replaceImageWithSizedVersion = (imageSrc, size) => {
+    const imageRegex = new RegExp(`!\\[([^\\]]*)\\]\\(${imageSrc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g');
+    const newContent = value.replace(imageRegex, `<img src="${imageSrc}" alt="$1" style="width:${size}px;height:auto;margin:8px 0;border:1px solid #ddd;border-radius:4px;" />`);
+    onChange(newContent);
+  };
+
   return (
     <div style={{ border: '1px solid #ccc', borderRadius: '4px' }}>
       <div style={{ 
@@ -58,7 +85,7 @@ const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) =
         placeholder={placeholder}
         style={{
           width: '100%',
-          height: '200px',
+          height: '150px',
           border: 'none',
           padding: '12px',
           resize: 'none',
@@ -67,6 +94,56 @@ const RichTextEditor = ({ value, onChange, placeholder, onToggleFileManager }) =
           outline: 'none'
         }}
       />
+      {/* Image Preview Section */}
+      {getImagesFromContent().length > 0 && (
+        <div style={{ 
+          borderTop: '1px solid #ccc', 
+          padding: '12px', 
+          background: '#f9f9f9',
+          maxHeight: '200px',
+          overflowY: 'auto'
+        }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>Image Previews:</div>
+          {getImagesFromContent().map((image, index) => {
+            const currentSize = imagePreviewSizes[image.src] || 300;
+            return (
+              <div key={index} style={{ marginBottom: '12px', padding: '8px', background: 'white', border: '1px solid #ddd', borderRadius: '4px' }}>
+                <img 
+                  src={image.src} 
+                  alt={image.alt}
+                  style={{ 
+                    width: currentSize + 'px', 
+                    height: 'auto', 
+                    display: 'block', 
+                    marginBottom: '8px',
+                    border: '1px solid #ccc'
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '10px', minWidth: '40px' }}>Size:</span>
+                  <input 
+                    type="range" 
+                    min="100" 
+                    max="600" 
+                    value={currentSize}
+                    onChange={(e) => updateImageSize(image.src, parseInt(e.target.value))}
+                    style={{ flex: 1 }}
+                  />
+                  <span style={{ fontSize: '10px', minWidth: '40px' }}>{currentSize}px</span>
+                  <button 
+                    type="button"
+                    className="button"
+                    onClick={() => replaceImageWithSizedVersion(image.src, currentSize)}
+                    style={{ fontSize: '9px', padding: '2px 6px' }}
+                  >
+                    Apply Size
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -95,15 +172,13 @@ const CreatePost = ({ onPostCreated, user, onClose }) => {
 
   const handleFileUpload = async (file) => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('file', file);
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/upload', {
+      const response = await apiCall('/api/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers: {},
         body: formData
       });
       
@@ -134,12 +209,12 @@ const CreatePost = ({ onPostCreated, user, onClose }) => {
   };
 
   const insertImage = (attachment) => {
-    const imageTag = `![${attachment.originalName}](http://localhost:5001/uploads/${attachment.filename})`;
+    const imageTag = `![${attachment.originalName}](${API_URL}/uploads/${attachment.filename})`;
     insertText(imageTag);
   };
 
   const insertFile = (attachment) => {
-    const fileTag = `[📎 ${attachment.originalName}](http://localhost:5001/uploads/${attachment.filename})`;
+    const fileTag = `[📎 ${attachment.originalName}](${API_URL}/api/download/${attachment.filename})`;
     insertText(fileTag);
   };
 
@@ -152,12 +227,8 @@ const CreatePost = ({ onPostCreated, user, onClose }) => {
       const token = localStorage.getItem('token');
       
       // Check if user is admin by trying admin endpoint first, fallback to community
-      let response = await fetch('http://localhost:5001/api/posts', {
+      let response = await apiCall('/api/posts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ 
           title, 
           content, 
@@ -169,12 +240,8 @@ const CreatePost = ({ onPostCreated, user, onClose }) => {
 
       // If admin endpoint fails, try community endpoint
       if (!response.ok && response.status === 403) {
-        response = await fetch('http://localhost:5001/api/posts/community', {
+        response = await apiCall('/api/posts/community', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({ 
             title, 
             content, 
@@ -286,7 +353,7 @@ const CreatePost = ({ onPostCreated, user, onClose }) => {
                 }}>
                   {attachment.isImage ? (
                     <img 
-                      src={`http://localhost:5001/uploads/${attachment.filename}`}
+                      src={`${API_URL}/uploads/${attachment.filename}`}
                       alt={attachment.originalName}
                       style={{ width: '100%', height: '60px', objectFit: 'cover', marginBottom: '4px' }}
                     />

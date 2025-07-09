@@ -130,6 +130,11 @@ router.post('/login', [
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        // check if user is banned
+        if (user.isBanned) {
+            return res.status(403).json({ message: 'Account banned', banned: true });
+        }
+
         // check password
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
@@ -168,10 +173,25 @@ router.get('/me', auth, async (req, res) => {
             username: user.username,
             email: user.email,
             avatar: user.avatar,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin,
+            isBanned: user.isBanned
         }});
     } catch (error) {
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Check ban status
+router.get('/ban-status', async (req, res) => {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) return res.json({ banned: false });
+    
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const user = await User.findById(decoded.userId);
+        res.json({ banned: user ? user.isBanned : false });
+    } catch (error) {
+        res.json({ banned: false });
     }
 });
 

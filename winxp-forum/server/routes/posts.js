@@ -1,4 +1,5 @@
 const express = require('express');
+const { body, validationResult, param } = require('express-validator');
 const Post = require('../models/Post');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
@@ -45,7 +46,16 @@ router.get('/community', async (req, res) => {
 });
 
 // Create community post (any user)
-router.post('/community', auth, async (req, res) => {
+router.post('/community', [
+    auth,
+    body('title').isLength({ min: 1, max: 200 }).trim().escape(),
+    body('content').isLength({ min: 1, max: 10000 }).trim(),
+    body('category').optional().isLength({ max: 50 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+    }
     try {
         const { title, content, tags, category, icon } = req.body;
 
@@ -68,10 +78,21 @@ router.post('/community', auth, async (req, res) => {
     }
 });
 
-// Create post (admin only)
-router.post('/', adminAuth, async (req, res) => {
+// Create post (admin creates regular post, non-admin creates community post)
+router.post('/', [
+    auth,
+    body('title').isLength({ min: 1, max: 200 }).trim().escape(),
+    body('content').isLength({ min: 1, max: 10000 }).trim(),
+    body('category').optional().isLength({ max: 50 }).trim().escape()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+    }
     try {
         const { title, content, tags, category, icon, attachments } = req.body;
+        const User = require('../models/User');
+        const user = await User.findById(req.userId);
 
         const post = new Post({
             title,
@@ -79,8 +100,9 @@ router.post('/', adminAuth, async (req, res) => {
             author: req.userId,
             tags: tags || [],
             category: category || 'general',
-            icon: icon || 'document.png',
-            attachments: attachments || [],
+            icon: icon || (user.isAdmin ? 'document.png' : 'community.png'),
+            attachments: user.isAdmin ? (attachments || []) : [],
+            isCommunity: !user.isAdmin
         });
 
         await post.save();
@@ -93,7 +115,13 @@ router.post('/', adminAuth, async (req, res) => {
 });
 
 // get single post
-router.get('/:id', async (req,res) => {
+router.get('/:id', [
+    param('id').isMongoId().withMessage('Invalid post ID')
+], async (req,res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: 'Invalid post ID' });
+    }
     try {
         const post = await Post.findById(req.params.id)
             .populate('author', 'username avatar')
@@ -111,8 +139,15 @@ router.get('/:id', async (req,res) => {
 });
 
 // add comment
-
-router.post('/:id/comments', auth, async (req, res) => {
+router.post('/:id/comments', [
+    auth,
+    param('id').isMongoId(),
+    body('content').isLength({ min: 1, max: 2000 }).trim()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ message: errors.array()[0].msg });
+    }
     try {
         const { content } = req.body;
         const post = await Post.findById(req.params.id);
@@ -133,9 +168,10 @@ router.post('/:id/comments', auth, async (req, res) => {
         // Create notification for post author
         await global.createNotification(
             post.author,
-            req.userId,
             'comment',
             `commented on your post "${post.title}"`,
+            req.userId,
+            null,
             post._id
         );
 
@@ -166,9 +202,10 @@ router.post('/:id/like', auth, async (req, res) => {
             // Create notification for post author
             await global.createNotification(
                 post.author,
-                req.userId,
                 'like',
                 `liked your post "${post.title}"`,
+                req.userId,
+                null,
                 post._id
             );
         }
@@ -222,9 +259,10 @@ router.post('/:id/comments/:commentId/like', auth, async (req, res) => {
             // Create notification for comment author
             await global.createNotification(
                 comment.author,
-                req.userId,
                 'like',
                 `liked your comment on "${post.title}"`,
+                req.userId,
+                null,
                 post._id
             );
         }
@@ -260,9 +298,10 @@ router.post('/:id/comments/:commentId/reply', auth, async (req, res) => {
         // Create notification for comment author
         await global.createNotification(
             comment.author,
-            req.userId,
             'reply',
             `replied to your comment on "${post.title}"`,
+            req.userId,
+            null,
             post._id
         );
         
@@ -292,9 +331,10 @@ router.post('/:id/comments/:commentId/replies/:replyId/like', auth, async (req, 
             reply.likes.push(req.userId);
             await global.createNotification(
                 reply.author,
-                req.userId,
                 'like',
                 `liked your reply on "${post.title}"`,
+                req.userId,
+                null,
                 post._id
             );
         }
@@ -344,12 +384,28 @@ router.post('/:id/pin', auth, async (req, res) => {
     }
 });
 
-// Delete post (admin only)
-router.delete('/:id', auth, async (req, res) => {
+// Delete post (admin or post owner)
+router.delete('/:id', [
+    auth,
+    param('id').isMongoId()
+], async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ message: 'Invalid post ID' });
+        }
+        
         const post = await Post.findById(req.params.id);
         if (!post) {
             return res.status(404).json({ message: 'Post not found' });
+        }
+        
+        const User = require('../models/User');
+        const user = await User.findById(req.userId);
+        
+        // Only admin or post owner can delete
+        if (!user.isAdmin && post.author.toString() !== req.userId) {
+            return res.status(403).json({ message: 'Not authorized' });
         }
         
         await Post.findByIdAndDelete(req.params.id);

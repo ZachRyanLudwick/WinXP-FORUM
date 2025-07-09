@@ -1,4 +1,5 @@
 const express = require('express');
+const { param, query, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const adminAuth = require('../middleware/adminAuth');
@@ -32,7 +33,16 @@ router.get('/stats', adminAuth, async (req, res) => {
 });
 
 // Get all users with pagination
-router.get('/users', adminAuth, async (req, res) => {
+router.get('/users', [
+  adminAuth,
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('search').optional().isLength({ max: 100 }).trim().escape()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: 'Invalid parameters' });
+  }
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -65,7 +75,14 @@ router.get('/users', adminAuth, async (req, res) => {
 });
 
 // Toggle user admin status
-router.put('/users/:id/admin', adminAuth, async (req, res) => {
+router.put('/users/:id/admin', [
+  adminAuth,
+  param('id').isMongoId()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: 'Invalid user ID' });
+  }
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -95,7 +112,14 @@ router.put('/users/:id/ban', adminAuth, async (req, res) => {
 });
 
 // Delete user
-router.delete('/users/:id', adminAuth, async (req, res) => {
+router.delete('/users/:id', [
+  adminAuth,
+  param('id').isMongoId()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ message: 'Invalid user ID' });
+  }
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
