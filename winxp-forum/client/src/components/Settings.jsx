@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiCall } from '../utils/api';
 
 const Settings = ({ user, onLogout, onClose }) => {
   const [notificationSettings, setNotificationSettings] = useState({
@@ -23,17 +24,13 @@ const Settings = ({ user, onLogout, onClose }) => {
   const fetchNotificationSettings = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/notifications/settings', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/notifications/settings');
       if (response.ok) {
         const settings = await response.json();
         setNotificationSettings(settings);
       }
       
-      const dmResponse = await fetch('http://localhost:5001/api/user/dm-settings', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const dmResponse = await apiCall('/api/user/dm-settings');
       if (dmResponse.ok) {
         const dmData = await dmResponse.json();
         setDmSettings(dmData);
@@ -49,12 +46,8 @@ const Settings = ({ user, onLogout, onClose }) => {
     
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:5001/api/notifications/settings', {
+      await apiCall('/api/notifications/settings', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify(newSettings)
       });
     } catch (error) {
@@ -233,13 +226,8 @@ const Settings = ({ user, onLogout, onClose }) => {
                       const newSettings = { ...dmSettings, allowDMs: e.target.checked };
                       setDmSettings(newSettings);
                       try {
-                        const token = localStorage.getItem('token');
-                        await fetch('http://localhost:5001/api/user/dm-settings', {
+                        await apiCall('/api/user/dm-settings', {
                           method: 'PUT',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`
-                          },
                           body: JSON.stringify(newSettings)
                         });
                       } catch (error) {
@@ -258,13 +246,8 @@ const Settings = ({ user, onLogout, onClose }) => {
                       const newSettings = { ...dmSettings, allowDMsFromFriends: e.target.checked };
                       setDmSettings(newSettings);
                       try {
-                        const token = localStorage.getItem('token');
-                        await fetch('http://localhost:5001/api/user/dm-settings', {
+                        await apiCall('/api/user/dm-settings', {
                           method: 'PUT',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            Authorization: `Bearer ${token}`
-                          },
                           body: JSON.stringify(newSettings)
                         });
                       } catch (error) {

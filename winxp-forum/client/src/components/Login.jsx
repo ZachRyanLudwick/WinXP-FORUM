@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import XPPopup from './XPPopup';
+import { apiCall } from '../utils/api';
 
 const Login = ({ onLogin, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -70,17 +71,13 @@ const Login = ({ onLogin, onClose }) => {
     }
 
     try {
-      const endpoint = isLogin ? 'http://localhost:5001/api/auth/login' : 'http://localhost:5001/api/auth/register';
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
       const body = isLogin 
         ? { email: email.toLowerCase(), password }
         : { username: username.toLowerCase(), email: email.toLowerCase(), password };
 
-      const response = await fetch(endpoint, {
+      const response = await apiCall(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
         body: JSON.stringify(body)
       });
 

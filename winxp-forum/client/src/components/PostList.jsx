@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiCall } from '../utils/api';
 
 const PostList = ({ onOpenPost, refreshTrigger }) => {
   const [officialPosts, setOfficialPosts] = useState([]);
@@ -23,9 +24,7 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const response = await fetch('http://localhost:5001/api/posts/bookmarks', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/posts/bookmarks');
       if (response.ok) {
         const data = await response.json();
         setBookmarks(data);
@@ -38,8 +37,8 @@ const PostList = ({ onOpenPost, refreshTrigger }) => {
   const fetchPosts = async () => {
     try {
       const [officialRes, communityRes] = await Promise.all([
-        fetch('http://localhost:5001/api/posts'),
-        fetch('http://localhost:5001/api/posts/community')
+        apiCall('/api/posts'),
+        apiCall('/api/posts/community')
       ]);
       
       if (officialRes.ok) {
