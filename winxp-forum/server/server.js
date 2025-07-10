@@ -7,8 +7,6 @@ const rateLimit = require('express-rate-limit');
 
 const xss = require('xss');
 const hpp = require('hpp');
-// const mongoSanitize = require('express-mongo-sanitize');
-// const { validateInput } = require('./middleware/validation');
 require('dotenv').config();
 const { createNotification, removeNotification } = require('./routes/notifications');
 
@@ -55,13 +53,6 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP'
 });
 app.use(limiter);
-
-// Prevent HTTP Parameter Pollution
-// app.use(hpp());
-
-// Prevent NoSQL injection attacks - disabled for Express 5 compatibility
-// app.use(mongoSanitize());
-
 
 
 // Body parsing with size limits
@@ -115,6 +106,21 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/friends', require('./routes/friends'));
 app.use('/api/download', require('./routes/download'));
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('Request URL:', req.url);
+  console.error('Request Method:', req.method);
+  res.status(500).json({ message: 'Internal Server Error', error: err.message });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  console.log('404 - Route not found:', req.method, req.originalUrl);
+  res.status(404).json({ message: 'Route not found' });
+});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
