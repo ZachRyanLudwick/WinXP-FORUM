@@ -115,6 +115,17 @@ app.use('/api/download', require('./routes/download'));
 
 
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('=== SERVER ERROR ===');
+  console.error('URL:', req.url);
+  console.error('Method:', req.method);
+  console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
+  console.error('==================');
+  res.status(500).json({ error: err.message });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
