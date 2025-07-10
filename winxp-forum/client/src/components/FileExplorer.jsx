@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiCall } from '../utils/api.js';
 
 const FileExplorer = ({ onOpenFile }) => {
   const [files, setFiles] = useState([]);
@@ -15,9 +16,7 @@ const FileExplorer = ({ onOpenFile }) => {
   const fetchFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/files', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/files');
       if (response.ok) {
         const data = await response.json();
         setFiles(data);
@@ -34,9 +33,8 @@ const FileExplorer = ({ onOpenFile }) => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/files/${fileId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await apiCall(`/api/files/${fileId}`, {
+        method: 'DELETE'
       });
       if (response.ok) {
         setFiles(files.filter(f => f._id !== fileId));
@@ -51,12 +49,8 @@ const FileExplorer = ({ onOpenFile }) => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/files/${fileId}/rename`, {
+      const response = await apiCall(`/api/files/${fileId}/rename`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ name: newName })
       });
       if (response.ok) {

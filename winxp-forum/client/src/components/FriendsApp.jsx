@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoginRequired from './LoginRequired';
+import { apiCall } from '../utils/api.js';
 
 const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => {
   const [friends, setFriends] = useState([]);
@@ -15,9 +16,7 @@ const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => 
   const fetchFriends = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/friends', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/friends');
       if (response.ok) {
         const data = await response.json();
         setFriends(data);
@@ -32,9 +31,7 @@ const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => 
   const fetchRequests = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/friends/requests', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/friends/requests');
       if (response.ok) {
         const data = await response.json();
         setRequests(data);
@@ -47,9 +44,8 @@ const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => 
   const acceptRequest = async (friendshipId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/friends/accept/${friendshipId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await apiCall(`/api/friends/accept/${friendshipId}`, {
+        method: 'POST'
       });
       if (response.ok) {
         fetchFriends();
@@ -68,9 +64,8 @@ const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => 
   const declineRequest = async (friendshipId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/friends/decline/${friendshipId}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await apiCall(`/api/friends/decline/${friendshipId}`, {
+        method: 'POST'
       });
       if (response.ok) {
         fetchRequests();
@@ -90,9 +85,8 @@ const FriendsApp = ({ onOpenProfile, onOpenChat, showPopup, user, onClose }) => 
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/friends/${friendshipId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await apiCall(`/api/friends/${friendshipId}`, {
+        method: 'DELETE'
       });
       if (response.ok) {
         fetchFriends();

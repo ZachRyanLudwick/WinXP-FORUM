@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import LoginRequired from './LoginRequired';
 import { getRankInfo } from '../utils/rankUtils.jsx';
+import { apiCall } from '../utils/api.js';
 
 const DMApp = ({ onOpenChat, user, onClose }) => {
   const [conversations, setConversations] = useState([]);
@@ -17,9 +18,7 @@ const DMApp = ({ onOpenChat, user, onClose }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await fetch('http://localhost:5001/api/messages/conversations', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/messages/conversations');
       
       if (response.ok) {
         const data = await response.json();

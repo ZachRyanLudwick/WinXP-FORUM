@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiCall } from '../utils/api.js';
 
 const UserSearch = ({ onOpenProfile }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,9 +15,7 @@ const UserSearch = ({ onOpenProfile }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/profile/search/${query}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall(`/api/profile/search/${query}`);
       if (response.ok) {
         const users = await response.json();
         setSearchResults(users);

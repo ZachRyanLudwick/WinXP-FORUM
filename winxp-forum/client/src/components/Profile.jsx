@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRankInfo, RankBadge } from '../utils/rankUtils.jsx';
+import { apiCall } from '../utils/api.js';
 
 
 const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
@@ -18,10 +19,8 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const url = userId ? `http://localhost:5001/api/profile/user/${userId}` : 'http://localhost:5001/api/profile';
-      const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const url = userId ? `/api/profile/user/${userId}` : '/api/profile';
+      const response = await apiCall(url);
       if (response.ok) {
         const data = await response.json();
         setProfileData(data);
@@ -36,9 +35,7 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
   const checkFriendshipStatus = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/friends', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall('/api/friends');
       if (response.ok) {
         const friends = await response.json();
         const isFriend = friends.some(friend => friend._id === userId);
@@ -49,9 +46,7 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
       }
       
       // Check pending requests
-      const requestsResponse = await fetch('http://localhost:5001/api/friends/requests', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const requestsResponse = await apiCall('/api/friends/requests');
       if (requestsResponse.ok) {
         const requests = await requestsResponse.json();
         
@@ -79,12 +74,8 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
   const sendFriendRequest = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/friends/request', {
+      const response = await apiCall('/api/friends/request', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ recipientId: userId })
       });
       
@@ -151,9 +142,7 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
                 className="button primary"
                 onClick={async () => {
                   try {
-                    const response = await fetch(`http://localhost:5001/api/user/${userId}/dm-settings`, {
-                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    });
+                    const response = await apiCall(`/api/user/${userId}/dm-settings`);
                     if (response.ok) {
                       const settings = await response.json();
                       if (!settings.allowDMs) {

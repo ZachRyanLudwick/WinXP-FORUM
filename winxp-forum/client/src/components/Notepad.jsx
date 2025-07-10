@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { apiCall } from '../utils/api.js';
 
 const Notepad = ({ initialFile = null }) => {
   const [content, setContent] = useState(initialFile?.content || '');
@@ -39,12 +40,8 @@ const Notepad = ({ initialFile = null }) => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/files', {
+      const response = await apiCall('/api/files', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ name: finalName, content })
       });
       

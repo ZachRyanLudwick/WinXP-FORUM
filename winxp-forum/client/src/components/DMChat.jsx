@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRankInfo } from '../utils/rankUtils.jsx';
+import { apiCall } from '../utils/api.js';
 
 const DMChat = ({ userId, username, onOpenProfile }) => {
   const [messages, setMessages] = useState([]);
@@ -31,18 +32,15 @@ const DMChat = ({ userId, username, onOpenProfile }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await fetch(`http://localhost:5001/api/messages/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall(`/api/messages/${userId}`);
       
       if (response.ok) {
         const data = await response.json();
         setMessages(data);
         
         // Mark messages as read
-        await fetch(`http://localhost:5001/api/messages/${userId}/read`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
+        await apiCall(`/api/messages/${userId}/read`, {
+          method: 'POST'
         });
       }
     } catch (error) {
@@ -59,12 +57,8 @@ const DMChat = ({ userId, username, onOpenProfile }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await fetch('http://localhost:5001/api/messages', {
+      const response = await apiCall('/api/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({
           recipientId: userId,
           content: newMessage
@@ -85,9 +79,7 @@ const DMChat = ({ userId, username, onOpenProfile }) => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await fetch(`http://localhost:5001/api/user/${userId}/dm-settings`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiCall(`/api/user/${userId}/dm-settings`);
       
       if (response.ok) {
         const settings = await response.json();
@@ -101,9 +93,7 @@ const DMChat = ({ userId, username, onOpenProfile }) => {
         // If general DMs are disabled, check friend setting
         if (settings.allowDMsFromFriends) {
           // Check if we're friends
-          const friendsResponse = await fetch('http://localhost:5001/api/friends', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const friendsResponse = await apiCall('/api/friends');
           if (friendsResponse.ok) {
             const friends = await friendsResponse.json();
             const isFriend = friends.some(friend => friend._id === userId);

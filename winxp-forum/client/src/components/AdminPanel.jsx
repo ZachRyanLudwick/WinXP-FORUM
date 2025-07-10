@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiCall } from '../utils/api.js';
 
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -32,29 +33,21 @@ const AdminPanel = () => {
     
     try {
       if (activeTab === 'dashboard') {
-        const res = await fetch('http://localhost:5001/api/admin/stats', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await apiCall('/api/admin/stats');
         const data = await res.json();
         setStats(data);
       } else if (activeTab === 'users') {
-        const res = await fetch(`http://localhost:5001/api/admin/users?page=${currentPage}&search=${searchTerm}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await apiCall(`/api/admin/users?page=${currentPage}&search=${searchTerm}`);
         const data = await res.json();
         setUsers(data.users || []);
         setTotalPages(data.totalPages || 1);
       } else if (activeTab === 'posts') {
-        const res = await fetch(`http://localhost:5001/api/admin/posts?page=${currentPage}&search=${searchTerm}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await apiCall(`/api/admin/posts?page=${currentPage}&search=${searchTerm}`);
         const data = await res.json();
         setPosts(data.posts || []);
         setTotalPages(data.totalPages || 1);
       } else if (activeTab === 'settings') {
-        const res = await fetch('http://localhost:5001/api/admin/settings', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await apiCall('/api/admin/settings');
         const data = await res.json();
         setSettings(data);
       }
@@ -68,9 +61,8 @@ const AdminPanel = () => {
   const toggleUserAdmin = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5001/api/admin/users/${userId}/admin`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
+      await apiCall(`/api/admin/users/${userId}/admin`, {
+        method: 'PUT'
       });
       fetchData();
     } catch (error) {
@@ -81,9 +73,8 @@ const AdminPanel = () => {
   const toggleUserBan = async (userId) => {
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5001/api/admin/users/${userId}/ban`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
+      await apiCall(`/api/admin/users/${userId}/ban`, {
+        method: 'PUT'
       });
       fetchData();
     } catch (error) {
@@ -95,9 +86,8 @@ const AdminPanel = () => {
     if (!confirm('Delete user and all their posts? This cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5001/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      await apiCall(`/api/admin/users/${userId}`, {
+        method: 'DELETE'
       });
       fetchData();
     } catch (error) {
@@ -109,9 +99,8 @@ const AdminPanel = () => {
     if (!confirm('Delete this post? This cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5001/api/admin/posts/${postId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+      await apiCall(`/api/admin/posts/${postId}`, {
+        method: 'DELETE'
       });
       fetchData();
     } catch (error) {

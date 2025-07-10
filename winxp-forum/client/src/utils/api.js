@@ -3,7 +3,6 @@ const API_URL = 'https://api.xploithub.com';
 
 export const apiCall = async (endpoint, options = {}) => {
   const url = `${API_URL}${endpoint}`;
-  console.log('Making API call to:', url);
   const token = localStorage.getItem('token');
   
   const defaultOptions = {

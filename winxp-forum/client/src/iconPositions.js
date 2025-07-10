@@ -1,3 +1,5 @@
+import { apiCall } from './utils/api.js';
+
 // Debounced position saving to minimize database calls
 let saveTimeout = null;
 const SAVE_DELAY = 2000; // 2 seconds after last drag
@@ -13,12 +15,8 @@ export const saveIconPositions = (positions, userId) => {
   saveTimeout = setTimeout(async () => {
     try {
       const token = localStorage.getItem('token');
-      await fetch('http://localhost:5001/api/user/icon-positions', {
+      await apiCall('/api/user/icon-positions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ positions })
       });
     } catch (error) {
@@ -43,9 +41,7 @@ export const loadIconPositions = async (userId) => {
   // Only fetch from server if no cache exists
   try {
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:5001/api/user/icon-positions', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const response = await apiCall('/api/user/icon-positions');
     
     if (response.ok) {
       const data = await response.json();
