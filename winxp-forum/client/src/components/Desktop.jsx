@@ -921,7 +921,7 @@ const Desktop = () => {
           }}
         >
           <img 
-            src="src/assets/start.png" 
+            src="/start.png" 
             alt="Start" 
             style={{
               height: '32px',
