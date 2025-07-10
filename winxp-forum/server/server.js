@@ -17,6 +17,10 @@ global.createNotification = createNotification;
 global.removeNotification = removeNotification;
 
 const app = express();
+
+// Trust proxy for X-Forwarded-For headers (nginx/cloudflare)
+app.set('trust proxy', true);
+
 const PORT = process.env.PORT || 5001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
