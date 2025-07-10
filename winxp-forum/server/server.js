@@ -16,12 +16,6 @@ global.removeNotification = removeNotification;
 
 const app = express();
 
-// Simple request logging - FIRST
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url} - ${req.get('Origin') || 'no-origin'}`);
-  next();
-});
-
 // Trust proxy for X-Forwarded-For headers (nginx/cloudflare)
 app.set('trust proxy', 1);
 
@@ -113,18 +107,6 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/friends', require('./routes/friends'));
 app.use('/api/download', require('./routes/download'));
 
-
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('=== SERVER ERROR ===');
-  console.error('URL:', req.url);
-  console.error('Method:', req.method);
-  console.error('Error:', err.message);
-  console.error('Stack:', err.stack);
-  console.error('==================');
-  res.status(500).json({ error: err.message });
-});
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
