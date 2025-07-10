@@ -19,6 +19,7 @@ global.removeNotification = removeNotification;
 const app = express();
 const PORT = process.env.PORT || 5001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 
 // Static files - serve uploads directory FIRST
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
@@ -31,7 +32,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 
 // CORS configuration
 app.use(cors({
-  origin: [CLIENT_URL, 'http://localhost:3000'],
+  origin: CORS_ORIGIN.split(',').map(url => url.trim()),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -115,4 +116,5 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`Client URL: ${CLIENT_URL}`);
+    console.log(`CORS Origin: ${CORS_ORIGIN}`);
 });
