@@ -16,6 +16,12 @@ global.removeNotification = removeNotification;
 
 const app = express();
 
+// Simple request logging - FIRST
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - ${req.get('Origin') || 'no-origin'}`);
+  next();
+});
+
 // Trust proxy for X-Forwarded-For headers (nginx/cloudflare)
 app.set('trust proxy', 1);
 
@@ -107,11 +113,7 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/friends', require('./routes/friends'));
 app.use('/api/download', require('./routes/download'));
 
-// Simple request logging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
-});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
