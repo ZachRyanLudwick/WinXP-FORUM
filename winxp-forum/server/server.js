@@ -107,19 +107,10 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/friends', require('./routes/friends'));
 app.use('/api/download', require('./routes/download'));
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.message);
-  console.error('Stack:', err.stack);
-  console.error('Request URL:', req.url);
-  console.error('Request Method:', req.method);
-  res.status(500).json({ message: 'Internal Server Error', error: err.message });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
-  console.log('404 - Route not found:', req.method, req.originalUrl);
-  res.status(404).json({ message: 'Route not found' });
+// Simple request logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
 });
 
 app.listen(PORT, () => {
