@@ -502,7 +502,7 @@ const Desktop = () => {
             {...windowProps}
             title="Admin Panel"
             icon="🛠️"
-            initialSize={{ width: 500, height: 400 }}
+            initialSize={{ width: 550, height: 420 }}
           >
             <AdminPanel />
           </Window>

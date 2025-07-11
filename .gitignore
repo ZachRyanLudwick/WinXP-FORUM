@@ -1,0 +1,4 @@
+bot-simulation/
+*.log
+.env
+node_modules/

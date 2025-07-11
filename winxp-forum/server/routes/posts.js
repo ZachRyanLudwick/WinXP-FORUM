@@ -49,7 +49,7 @@ router.get('/community', async (req, res) => {
 router.post('/community', [
     auth,
     body('title').isLength({ min: 1, max: 200 }).trim().escape(),
-    body('content').isLength({ min: 1, max: 10000 }).trim(),
+    body('content').isLength({ min: 1, max: 50000 }).trim(),
     body('category').optional().isLength({ max: 50 }).trim().escape()
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -82,7 +82,7 @@ router.post('/community', [
 router.post('/', [
     auth,
     body('title').isLength({ min: 1, max: 200 }).trim().escape(),
-    body('content').isLength({ min: 1, max: 10000 }).trim(),
+    body('content').isLength({ min: 1, max: 50000 }).trim(),
     body('category').optional().isLength({ max: 50 }).trim().escape()
 ], async (req, res) => {
     const errors = validationResult(req);
@@ -142,7 +142,7 @@ router.get('/:id', [
 router.post('/:id/comments', [
     auth,
     param('id').isMongoId(),
-    body('content').isLength({ min: 1, max: 2000 }).trim()
+    body('content').isLength({ min: 1, max: 10000 }).trim()
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

@@ -75,8 +75,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get specific user profile
-router.get('/user/:userId', auth, async (req, res) => {
+// Get specific user profile (public access)
+router.get('/user/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
     
@@ -145,8 +145,8 @@ router.get('/user/:userId', auth, async (req, res) => {
   }
 });
 
-// Search users
-router.get('/search/:query', auth, async (req, res) => {
+// Search users (public access)
+router.get('/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
     

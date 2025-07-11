@@ -129,14 +129,17 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
           </div>
           {userId && (() => {
             const token = localStorage.getItem('token');
-            if (token) {
-              try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.userId === userId) {
-                  return null; // Don't show button for own profile
-                }
-              } catch (e) {}
+            if (!token) return null; // Hide for unauthorized users
+            
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              if (payload.userId === userId) {
+                return null; // Don't show button for own profile
+              }
+            } catch (e) {
+              return null; // Hide if token is invalid
             }
+            
             return (
               <button 
                 className="button primary"
@@ -174,13 +177,15 @@ const Profile = ({ userId = null, onOpenProfile, onOpenChat, showPopup }) => {
           
           {userId && (() => {
             const token = localStorage.getItem('token');
-            if (token) {
-              try {
-                const payload = JSON.parse(atob(token.split('.')[1]));
-                if (payload.userId === userId) {
-                  return null; // Don't show button for own profile
-                }
-              } catch (e) {}
+            if (!token) return null; // Hide for unauthorized users
+            
+            try {
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              if (payload.userId === userId) {
+                return null; // Don't show button for own profile
+              }
+            } catch (e) {
+              return null; // Hide if token is invalid
             }
             
             if (friendshipStatus === 'friends') {

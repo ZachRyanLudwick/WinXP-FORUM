@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { apiCall } from '../utils/api.js';
+import LoginRequired from './LoginRequired.jsx';
 
-const FileExplorer = ({ onOpenFile }) => {
+const FileExplorer = ({ onOpenFile, user, onClose }) => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [renamingFile, setRenamingFile] = useState(null);
   const [newFileName, setNewFileName] = useState('');
+
+  // Check if user is logged in
+  if (!user) {
+    return (
+      <LoginRequired 
+        user={user}
+        onClose={onClose}
+        appName="My Documents"
+        appIcon="📁"
+        description="Please login to access your personal documents and files"
+      />
+    );
+  }
 
   useEffect(() => {
     fetchFiles();
