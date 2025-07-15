@@ -1,0 +1,23 @@
+[Unit]
+Description=WinXP Forum Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=zach
+Group=zach
+WorkingDirectory=/home/zach/desktop/winxp-forum/server
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=PORT=5001
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=winxp-forum
+
+[Install]
+WantedBy=multi-user.target
