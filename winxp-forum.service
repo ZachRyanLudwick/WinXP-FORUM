@@ -7,8 +7,8 @@ Wants=network.target
 Type=simple
 User=zach
 Group=zach
-WorkingDirectory=/home/zach/desktop/winxp-forum/server
-ExecStart=/usr/bin/node server.js
+WorkingDirectory=/home/zach/Desktop/WinXP-FORUM/server
+ExecStart=/home/zach/.nvm/versions/node/v22.17.0/bin/node server.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
