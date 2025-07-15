@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import Desktop from './components/Desktop'
 import MobileBlock from './components/MobileBlock'
+import ConnectionModal from './components/ConnectionModal'
+import useConnectionStatus from './utils/useConnectionStatus'
 
 function App() {
   const [isMobile, setIsMobile] = useState(false);
+  const { isConnected, retryConnection } = useConnectionStatus();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -25,6 +28,10 @@ function App() {
   return (
     <div className="app">
       <Desktop />
+      <ConnectionModal 
+        isConnected={isConnected} 
+        onRetry={retryConnection} 
+      />
     </div>
   )
 }
