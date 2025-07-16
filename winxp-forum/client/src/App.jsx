@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Desktop from './components/Desktop'
-import MobileBlock from './components/MobileBlock'
+import MobileApp from './components/MobileApp'
 import ConnectionModal from './components/ConnectionModal'
 import useConnectionStatus from './utils/useConnectionStatus'
 
@@ -22,7 +22,15 @@ function App() {
   }, []);
 
   if (isMobile) {
-    return <MobileBlock />;
+    return (
+      <>
+        <MobileApp />
+        <ConnectionModal 
+          isConnected={isConnected} 
+          onRetry={retryConnection} 
+        />
+      </>
+    );
   }
 
   return (

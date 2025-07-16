@@ -370,6 +370,32 @@ body {
   background: var(--xp-gray);
 }
 
+/* Mobile zoom prevention */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+    transform-origin: left top;
+    transform: scale(1);
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    font-size: 16px !important;
+    zoom: 1;
+  }
+}
+
+/* Prevent zoom on all input elements */
+input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Admin Panel Styles */
 .admin-panel {
   height: 100%;

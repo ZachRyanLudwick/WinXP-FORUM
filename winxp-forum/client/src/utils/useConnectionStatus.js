@@ -7,22 +7,21 @@ const useConnectionStatus = () => {
 
   const checkConnection = async () => {
     try {
-      setIsChecking(true);
-      const response = await apiCall('/api/posts/community/');
+      const response = await apiCall('/api/health/');
       if (response.ok) {
-        setIsConnected(true);
+        // Only update if we were previously disconnected
+        if (!isConnected) {
+          setIsConnected(true);
+        }
       } else {
         setIsConnected(false);
       }
     } catch (error) {
       setIsConnected(false);
-    } finally {
-      setIsChecking(false);
     }
   };
 
   useEffect(() => {
-    // Check connection every 10 seconds
     const interval = setInterval(checkConnection, 10000);
     
     // Initial check
@@ -35,7 +34,7 @@ const useConnectionStatus = () => {
 
   const retryConnection = () => {
     checkConnection();
-  };
+  }
 
   return { isConnected, isChecking, retryConnection };
 };

@@ -49,7 +49,7 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
+  max: 5000, // limit each IP to 5000 requests per windowMs
   message: 'Too many requests from this IP'
 });
 app.use(limiter);
@@ -87,12 +87,17 @@ mongoose.connection.on('error', (err) => {
 // API rate limiting for sensitive routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 50, // 50 attempts per 15 minutes
+  max: 200, // 200 attempts per 15 minutes
   message: 'Too many authentication attempts'
 });
 
 // Global validation middleware - disabled temporarily
 // app.use('/api', validateInput);
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Routes
 app.use('/api/auth', authLimiter, require('./routes/auth'));
