@@ -571,7 +571,7 @@ const Desktop = () => {
             icon="📁"
             initialSize={{ width: 600, height: 450 }}
           >
-            <FileExplorer onOpenFile={(file) => openWindow('notepad', { file })} />
+            <FileExplorer onOpenFile={(file) => openWindow('notepad', { file })} user={user} onClose={() => closeWindow(id)} />
           </Window>
         );
       
